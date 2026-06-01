@@ -1,12 +1,24 @@
 {
-  "name": "mi-app-clone",
+  "name": "clone",
   "version": "1.0.0",
-  "description": "Frontend estático servido con Node",
+  "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "engines": {
-    "node": ">=22.0.0"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dextrometorfano/plate_control.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/dextrometorfano/plate_control/issues"
+  },
+  "homepage": "https://github.com/dextrometorfano/plate_control#readme",
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }

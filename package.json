@@ -1,0 +1,12 @@
+{
+  "name": "mi-app-clone",
+  "version": "1.0.0",
+  "description": "Frontend estático servido con Node",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

@@ -659,8 +659,18 @@ function renderAdd() {
     (items || []).forEach((it) => {
       const opt = document.createElement('option');
       opt.value = it.itemId;
-      opt.textContent = it.itemNombre + (it.subfamiliaNombre ? (' | ' + it.subfamiliaNombre) : '');
+
+      // Mostrar subtipo al inicio del nombre del item
+      // Antes: itemNombre | subfamiliaNombre
+      // Ahora: subfamiliaNombre itemNombre
+      const disp = `${it.subfamiliaNombre || ''} ${it.itemNombre || ''}`.trim();
+      opt.textContent = disp;
+
+      // Atributos para que el carrito use datos correctos
       opt.setAttribute('data-sub', it.subfamiliaNombre || '');
+      opt.setAttribute('data-fam', it.familiaNombre || '');
+      opt.setAttribute('data-subid', it.subfamiliaId ?? '');
+      opt.setAttribute('data-famid', it.familiaId ?? '');
       $selItem.appendChild(opt);
     });
   }
@@ -736,8 +746,16 @@ function renderAdd() {
     if (!opt || !opt.value) return;
 
     const idItem = String(opt.value);
-    const nombre = opt.textContent.split('|')[0].trim();
-    const sub = opt.getAttribute('data-sub') || '';
+
+    const sub = (opt.getAttribute('data-sub') || '').trim();
+    const fam = (opt.getAttribute('data-fam') || '').trim();
+
+    // En UI ahora el display es: "{sub} {itemNombre}"
+    // Construimos el nombre del carrito usando los atributos (evita errores de parseo por texto)
+    // Si por alguna razón `sub` no coincide con el prefijo del display, caemos al display completo.
+    const display = (opt.textContent || '').trim();
+    const nombreItemRemanente = display.startsWith(sub) ? display.slice(sub.length).trim() : display;
+    const nombre = `${sub} ${nombreItemRemanente}`.trim() || display;
 
     if (state.carrito.has(idItem)) {
       alert('Este item ya está en el carrito. No se permiten duplicados.');
@@ -759,7 +777,7 @@ function renderAdd() {
     itemDiv.innerHTML = `
       <div class="item-info">
         <div class="item-nombre">${escapeHtml(nombre)}</div>
-        <div class="item-sub">${escapeHtml(sub)}</div>
+        <div class="item-sub">${escapeHtml(sub || fam)}</div>
       </div>
       <div class="item-controls">
         <input type="number" class="qty-input" value="1" min="1" step="1" />
@@ -837,14 +855,58 @@ function renderAdd() {
   // --- ASIGNACIÓN DE EVENTOS SEGUROS (Post-Render) ---
   // Usamos setTimeout para asegurar que el elemento ya se encuentra en el DOM activo
   setTimeout(() => {
-    getEl('selectorFamilia').addEventListener('change', async (e) => {
-      getEl('selectorSubfamilia').value = '';
+    const $selFamilia = getEl('selectorFamilia');
+    const $selSubfamilia = getEl('selectorSubfamilia');
+
+    // Helper: cuando hay subtipo definido, autoseleccionar familia y bloquear cambio
+    function aplicarAutoFamiliaPorSubfamilia(subfamiliaIdStr) {
+      if (!$selFamilia || !subfamiliaIdStr) return;
+
+      const subfamiliaId = Number(subfamiliaIdStr);
+      if (!Number.isFinite(subfamiliaId)) return;
+
+      // Buscar familiaId que corresponde al subtipo seleccionado dentro del cache de items
+      const match = (state.itemsCache || []).find((it) => Number(it.subfamiliaId) === subfamiliaId);
+
+      if (!match || !match.familiaId) return;
+
+      $selFamilia.value = String(match.familiaId);
+
+      // Bloquear para evitar inconsistencia
+      $selFamilia.disabled = true;
+    }
+
+    function desbloquearFamiliaSiAplica() {
+      if (!$selFamilia) return;
+      $selFamilia.disabled = false;
+    }
+
+    $selFamilia.addEventListener('change', async (e) => {
+      // Si el usuario cambia familia manualmente, liberamos subtipo
+      desbloquearFamiliaSiAplica();
+      $selSubfamilia.value = '';
       await cargarConFiltros(e.target.value, null);
     });
 
-    getEl('selectorSubfamilia').addEventListener('change', async (e) => {
-      const familiaId = getEl('selectorFamilia').value;
-      await cargarConFiltros(familiaId || null, e.target.value || null);
+    $selSubfamilia.addEventListener('change', async (e) => {
+      const subId = e.target.value || '';
+      const familiaSelId = $selFamilia.value || '';
+
+      if (!subId) {
+        // Sin subtipo => familia editable y sin filtros por subtipo
+        desbloquearFamiliaSiAplica();
+        await cargarConFiltros($selFamilia.value || null, null);
+        return;
+      }
+
+      // Caso solicitado: si selecciona SOLO subtipo, autocompletar familia correspondiente
+      // y NO permitir cambio porque "no puede ser otro tipo de familia"
+      aplicarAutoFamiliaPorSubfamilia(subId);
+
+      // Después de auto-seleccionar familia, recargar items filtrados por subtipo
+      const familiaIdFinal = $selFamilia.disabled ? $selFamilia.value : familiaSelId;
+
+      await cargarConFiltros(familiaIdFinal || null, subId);
     });
 
     getEl('btnAddCarrito').addEventListener('click', agregarAlCarrito);

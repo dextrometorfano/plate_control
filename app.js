@@ -122,7 +122,7 @@
     $topbar.innerHTML = `
       <div class="brand" style="width:100%; max-width:430px;">
         <div class="brand-mark">
-          <img alt="Invex" src="${safeAsset("assets/invex-logo.png")}" onerror="this.style.display='none'"/>
+          <img alt="Invex" src="${safeAsset("src/assets/invex-logo.png")}" onerror="this.style.display='none'"/>
         </div>
 
         <div style="min-width:0;">
@@ -156,7 +156,7 @@
     wrap.innerHTML = `
       <div class="welcome">
         <div class="logo-bubble">
-          <img alt="RADEEL" src="${safeAsset("assets/radeel-logo.png")}" onerror="this.style.display='none'"/>
+          <img alt="RADEEL" src="${safeAsset("src/assets/radeel-logo.png")}" onerror="this.style.display='none'"/>
         </div>
         <div>
           <h2 class="h-hero" style="margin-bottom:2px;">¡Hola!</h2>
@@ -257,7 +257,7 @@
       <div style="display:flex; align-items:center; justify-content:center; gap:14px; padding:16px;">
         <div style="display:flex; align-items:center; gap:12px;">
           <div style="background:#fff; padding:6px; border-radius:12px; border:1px solid var(--border); box-shadow: var(--shadow-sm);">
-            <img alt="Invex" src="${safeAsset("assets/invex-logo.png")}" style="width:24px; height:24px; object-fit:contain;" onerror="this.style.display='none'"/>
+            <img alt="Invex" src="${safeAsset("src/assets/invex-logo.png")}" style="width:24px; height:24px; object-fit:contain;" onerror="this.style.display='none'"/>
           </div>
 
           <div>
@@ -267,7 +267,7 @@
         </div>
 
         <div style="background:rgba(255,255,255,.10); padding:6px; border-radius:999px;">
-          <img alt="RADEEL" src="${safeAsset("assets/radeel-logo.png")}" style="width:18px; height:18px; object-fit:contain;" onerror="this.style.display='none'"/>
+          <img alt="RADEEL" src="${safeAsset("src/assets/radeel-logo.png")}" style="width:18px; height:18px; object-fit:contain;" onerror="this.style.display='none'"/>
         </div>
       </div>
     `;
@@ -412,8 +412,8 @@
             </div>
 
             <div class="item-meta">
-              <div class="item-name">${escapeHtml(a.nombre)}</div>
-              <div class="item-sub">${escapeHtml(a.categoria)} • ID: ${escapeHtml(a.id)}</div>
+              <div class="item-name">${escapeHtml(a.item || a.nombre)}</div>
+              <div class="item-sub">${escapeHtml(a.familia || a.categoria || "")} • ID: ${escapeHtml(a.id)} • Ubicación: ${escapeHtml(a.ubicacion || "")}</div>
             </div>
           </div>
 

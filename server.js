@@ -30,7 +30,7 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: "online", 
-    message: "Servidor Invex respondiendo correctamente",
+    message: "Servidor respondiendo correctamente",
     supabaseConnected: !!SUPABASE_URL && !!SUPABASE_KEY
   });
 });
@@ -54,7 +54,10 @@ app.get('/api/state', async (req, res) => {
         item (
           id,
           nombre,
-          subfamilia ( nombre )
+          subfamilia (
+            nombre,
+            familia ( nombre )
+          )
         )
       `);
 
@@ -62,24 +65,31 @@ app.get('/api/state', async (req, res) => {
 
     // 2. Mapear los datos de tu DB al formato exacto que espera tu app.js
     const articles = invData.map((row) => {
-      // Replicamos el CONCAT_WS(' ', sb.nombre, i.nombre) de tu SQL
+      // Equivalente a tu SQL: CONCAT_WS(' ', sb.nombre, i.nombre) AS item
       const subfamiliaNombre = row.item?.subfamilia?.nombre || '';
       const itemNombre = row.item?.nombre || '';
-      const nombreCompleto = `${subfamiliaNombre} ${itemNombre}`.trim();
+      const itemCompleto = `${subfamiliaNombre} ${itemNombre}`.trim();
 
-      // Determinamos el estado dinámico visual según tu stock real
+      // Equivalente a tu SQL: f.nombre AS familia
+      const familiaNombre = row.item?.subfamilia?.familia?.nombre || '';
+
+      // Equivalente a tu SQL: alm.nombre AS ubicacion
+      const ubicacion = row.almacen?.nombre || '';
+
+      // Validación visual (critico/bajo) según cantidad
       let estadoVisual = 'ok';
       if (row.cantidad === 0) {
         estadoVisual = 'danger'; // Crítico
-      } else if (row.cantidad <= 2) {
+      } else if (row.cantidad <= 4) {
         estadoVisual = 'warn';   // Bajo stock
       }
 
       return {
-        id: `ART-${row.item?.id || row.id}`, // Formateo visual de ID
-        nombre: nombreCompleto,
-        categoria: subfamiliaNombre, // Usamos la subfamilia como categoría visual
+        id: row.item?.id ?? row.id, // i.id (entero)
+        item: itemCompleto,
+        familia: familiaNombre,
         stock: row.cantidad,
+        ubicacion,
         estado: estadoVisual
       };
     });
@@ -91,10 +101,10 @@ app.get('/api/state', async (req, res) => {
 
     // 4. Retornar la estructura limpia requerida por el frontend
     res.json({
-      companyName: "RADEEL",
+      companyName: "FAMECA",
       user: {
-        nombre: "Operario Invex",
-        email: "almacen@radeel.com"
+        nombre: "random",
+        email: "random@fameca.pe"
       },
       stats: {
         totalArticulos,

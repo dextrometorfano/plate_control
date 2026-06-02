@@ -110,9 +110,9 @@
     const titles = {
       dashboard: "Inicio",
       scanner: "Escáner de códigos",
-      add: "Añadir artículo",
-      materials: "Materiales",
-      inventory: "Ajuste de inventario",
+      add: "Ajuste de Inventario",
+      materials: "Material",
+      inventory: "Ajuste de Inventario",
       reports: "Informes",
       profile: "Perfil"
     };
@@ -327,48 +327,554 @@
     renderScreen();
   };
 
-  function renderAdd() {
-    const wrap = document.createElement("div");
-    wrap.className = "space-y-12";
+function renderAdd() {
+  const wrap = document.createElement("div");
+  wrap.className = "space-y-12";
 
-    wrap.innerHTML = `
-      <div class="card" style="padding:16px;">
-        <h3 class="section-title">Añadir artículo</h3>
-        <p class="subtle small" style="margin-top:-4px; margin-bottom:12px;">
-          Demo: formulario visual (no envía a backend).
-        </p>
+  wrap.innerHTML = `
+    <div class="card" style="padding:16px;">
+      <style>
+        #loading-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(5px);
+          z-index: 9999;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 24px;
+          font-weight: bold;
+        }
+        body.loading { overflow: hidden; }
 
-        <div style="display:grid; grid-template-columns: 1fr; gap:10px;">
-          <label style="font-weight:800; font-size:12.5px; color:rgba(17,24,39,.7);">
-            Nombre del artículo
-            <input type="text" class="input" placeholder="Ej: Tornillos M8 x 20" />
-          </label>
+        .ms-switch-wrap{
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          gap:14px;
+          margin-bottom:12px;
+        }
+        .ms-switch{
+          position:relative;
+          width:180px;
+          height:40px;
+          border-radius:999px;
+          padding:4px;
+          border:1px solid var(--border);
+          background: #fff;
+          box-shadow: var(--shadow-sm);
+          overflow:hidden;
+          cursor: pointer;
+        }
+        .ms-switch .ms-thumb{
+          position:absolute;
+          top:4px;
+          left:4px;
+          width:calc(50% - 4px);
+          height:calc(100% - 8px);
+          border-radius:999px;
+          transition: transform .18s ease;
+          background:#E2EFDA; /* Recepción */
+          border:1px solid rgba(22,163,74,.22);
+        }
+        .ms-switch[data-mode="retiro"] .ms-thumb{
+          transform: translateX(calc(100% - 4px));
+          background:#FFCDCD; /* Retiro */
+          border-color: rgba(239,68,68,.22);
+        }
+        .ms-labels{
+          width:100%;
+          position:relative;
+          z-index:2;
+          display:flex;
+          height:100%;
+          align-items:center;
+          justify-content:space-between;
+          padding:0 12px;
+          font-weight:900;
+          font-size:12.5px;
+          color: rgba(17,24,39,.65);
+          pointer-events:none;
+        }
+        .ms-labels .left{ color:#15803d; }
+        .ms-labels .right{ color:#b91c1c; }
 
-          <label style="font-weight:800; font-size:12.5px; color:rgba(17,24,39,.7);">
-            Categoría
-            <input type="text" class="input" placeholder="Ej: Ferretería" />
-          </label>
+        .section-title-soft{
+          font-size:14.5px;
+          font-weight:850;
+          margin:0 0 10px;
+          color: rgba(17,24,39,.92);
+        }
 
-          <label style="font-weight:800; font-size:12.5px; color:rgba(17,24,39,.7);">
-            Stock inicial
-            <input type="number" min="0" class="input" placeholder="0" />
-          </label>
+        .grid-stack{
+          display:grid;
+          grid-template-columns: 1fr;
+          gap:10px;
+        }
+
+        .select{
+          width:100%;
+          border:1px solid var(--border);
+          border-radius:14px;
+          padding:11px 12px;
+          font-size:14px;
+          background:#fff;
+          outline:none;
+        }
+        .select:focus{
+          border-color: rgba(14,165,233,.55);
+          box-shadow: 0 0 0 3px rgba(14,165,233,.15);
+        }
+
+        .carrito-list{
+          display:flex;
+          flex-direction:column;
+          gap:10px;
+          margin-top:10px;
+        }
+        .carrito-item{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+          padding:12px;
+          background:var(--card-2);
+          border-radius:var(--radius);
+          border:1px solid var(--border);
+        }
+        .carrito-item .item-info{ min-width:0; flex: 1; }
+        .carrito-item .item-nombre{
+          font-weight:900;
+          font-size:13.5px;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .carrito-item .item-sub{
+          margin-top:2px;
+          font-size:12px;
+          color:var(--muted);
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .carrito-item .item-controls{ display:flex; align-items:center; gap:10px; }
+
+        .qty-input{
+          width:92px;
+          border:1px solid var(--border);
+          border-radius:14px;
+          padding:9px 10px;
+          font-size:14px;
+          background:#fff;
+          outline:none;
+        }
+        .qty-input:focus{
+          border-color: rgba(14,165,233,.55);
+          box-shadow: 0 0 0 3px rgba(14,165,233,.15);
+        }
+
+        .remove-btn{
+          border:0;
+          background:transparent;
+          color: rgba(17,24,39,.45);
+          cursor:pointer;
+          font-weight:900;
+          font-size:14px;
+          padding:0 4px;
+        }
+
+        .add-btn{
+          border:0;
+          background: rgba(14,165,233,.14);
+          color: #0284c7;
+          padding:10px 12px;
+          border-radius:14px;
+          font-weight:900;
+          cursor:pointer;
+          border:1px solid rgba(14,165,233,.22);
+          height:44px;
+        }
+        .add-btn:disabled{ opacity:.6; cursor:not-allowed; }
+      </style>
+
+      <h3 class="section-title">Ajuste de Inventario</h3>
+      <p class="subtle small" style="margin-top:-4px; margin-bottom:12px;">
+        Implementación completa: <b>Recepción</b>.
+      </p>
+
+      <div class="ms-switch-wrap">
+        <div class="ms-switch" id="ms-switch" data-mode="recepcion" role="switch" aria-checked="false" tabindex="0">
+          <div class="ms-thumb" id="ms-thumb"></div>
+          <div class="ms-labels">
+            <div class="left">Recepción</div>
+            <div class="right">Retiro</div>
+          </div>
         </div>
+      </div>
 
-        <div class="row" style="margin-top:14px; justify-content:space-between;">
-          <button class="btn btn-ghost" type="button" onclick="window.__invexSetScreen && window.__invexSetScreen('materials')">
-            Cancelar
-          </button>
-          <button class="btn btn-primary" type="button" onclick="window.__invexAddDemo && window.__invexAddDemo()">
-            Guardar
+      <div class="section" style="margin-top:2px;">
+        <label style="font-weight:900; font-size:12.5px; color:rgba(17,24,39,.7); display:block;">
+          ID de Recepción
+          <div style="margin-top:6px; font-weight:950; font-size:16px;" id="lblProximoId">—</div>
+        </label>
+      </div>
+
+      <div class="grid-stack" style="margin-top:12px;">
+        <label style="font-weight:900; font-size:12.5px; color:rgba(17,24,39,.7);">
+          Proveedor
+          <select id="selectorProveedor" class="select"><option value="">Cargando…</option></select>
+        </label>
+
+        <label style="font-weight:900; font-size:12.5px; color:rgba(17,24,39,.7);">
+          Almacén
+          <select id="selectorAlmacen" class="select"><option value="">Cargando…</option></select>
+        </label>
+      </div>
+
+      <div class="section" style="margin-top:14px;">
+        <div class="section-title-soft">Tipo de plancha</div>
+        <select id="selectorFamilia" class="select">
+          <option value="">-- Todas las familias --</option>
+        </select>
+      </div>
+
+      <div class="section" style="margin-top:12px;">
+        <div class="section-title-soft">Subtipo</div>
+        <select id="selectorSubfamilia" class="select">
+          <option value="">-- Todas las subfamilias --</option>
+        </select>
+      </div>
+
+      <div class="section" style="margin-top:12px;">
+        <div class="section-title-soft">Item</div>
+        <div class="row" style="gap:10px; align-items:flex-end; display:flex;">
+          <div style="flex:1 1 auto;">
+            <select id="selectorItem" class="select">
+              <option value="">-- Seleccione un item --</option>
+            </select>
+          </div>
+          <button class="add-btn" type="button" id="btnAddCarrito">
+            + Añadir
           </button>
         </div>
       </div>
-    `;
 
-    return wrap;
+      <div class="section" style="margin-top:14px;">
+        <div class="section-title-soft">Carrito</div>
+        <div id="carritoBody" class="carrito-list"></div>
+      </div>
+
+      <div class="section" style="margin-top:14px;">
+        <label style="font-weight:900; font-size:12.5px; color:rgba(17,24,39,.7); display:block;">
+          Observaciones (Opcional)
+          <textarea id="txtObservaciones" rows="3" maxlength="20000" placeholder="Escriba aquí notas adicionales..." style="width:100%; margin-top:6px; border:1px solid var(--border); border-radius:14px; padding:11px 12px; font-size:14px; background:#fff; outline:none; resize:none; box-sizing: border-box;"></textarea>
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:16px; display:flex; justify-content:space-between;">
+        <button class="btn btn-ghost" type="button" id="btnCancelar">
+          Cancelar
+        </button>
+        <button class="btn btn-primary" type="button" id="btnSubmitRecepcion" style="background:#E2EFDA; color:#15803d; border:1px solid rgba(22,163,74,.22); font-weight:bold; padding:10px 16px; border-radius:14px; cursor:pointer;">
+          Ajustar inventario
+        </button>
+      </div>
+    </div>
+
+    <div id="loading-overlay">Cargando...</div>
+  `;
+
+  // --- ÁMBITO DE ESTADO PRIVADO (Encapsulado) ---
+  const state = {
+    proximoId: 1,
+    proveedores: [],
+    almacenes: [],
+    familias: [],
+    subfamilias: [],
+    itemsCache: [],
+    carrito: new Map() // key: String(idItem) -> { id_item: Number, nombre, subfamiliaNombre, cantidad }
+  };
+
+  // --- ELEMENTOS DEL DOM ---
+  const getEl = (id) => wrap.querySelector(`#${id}`);
+
+  function showLoading() {
+    const overlay = getEl('loading-overlay');
+    const btn = getEl('btnSubmitRecepcion');
+    if (overlay) overlay.style.display = 'flex';
+    document.body.classList.add('loading');
+    if (btn) btn.disabled = true;
   }
 
+  function hideLoading() {
+    const overlay = getEl('loading-overlay');
+    const btn = getEl('btnSubmitRecepcion');
+    if (overlay) overlay.style.display = 'none';
+    document.body.classList.remove('loading');
+    if (btn) btn.disabled = false;
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function fillSelect($select, list, getValue, getLabel, emptyLabel) {
+    if (!$select) return;
+    $select.innerHTML = '';
+    if (emptyLabel !== undefined) {
+      const opt0 = document.createElement('option');
+      opt0.value = '';
+      opt0.textContent = emptyLabel;
+      $select.appendChild(opt0);
+    }
+    (list || []).forEach((x) => {
+      const opt = document.createElement('option');
+      opt.value = getValue(x);
+      opt.textContent = getLabel(x);
+      $select.appendChild(opt);
+    });
+  }
+
+  function llenarItemsDropdown(items) {
+    const $selItem = getEl('selectorItem');
+    if (!$selItem) return;
+    $selItem.innerHTML = '';
+    
+    const opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = '-- Seleccione un item --';
+    $selItem.appendChild(opt0);
+
+    (items || []).forEach((it) => {
+      const opt = document.createElement('option');
+      opt.value = it.itemId;
+      opt.textContent = it.itemNombre + (it.subfamiliaNombre ? (' | ' + it.subfamiliaNombre) : '');
+      opt.setAttribute('data-sub', it.subfamiliaNombre || '');
+      $selItem.appendChild(opt);
+    });
+  }
+
+  // --- ACCIONES API ---
+  async function cargarRecepcion() {
+    showLoading();
+    try {
+      const resp = await fetch('/api/recepcion-data');
+      if (!resp.ok) throw new Error('Error al cargar datos de recepción');
+      const data = await resp.json();
+
+      state.proximoId = data.proximoId || 1;
+      const lblId = getEl('lblProximoId');
+      if (lblId) lblId.textContent = state.proximoId;
+
+      state.proveedores = data.proveedores || [];
+      state.almacenes = data.almacenes || [];
+      state.familias = data.familias || [];
+      state.itemsCache = data.items || [];
+      state.subfamilias = data.subfamilias || [];
+
+      fillSelect(getEl('selectorProveedor'), state.proveedores, (x) => x.id, (x) => x.nombre, '-- Seleccione proveedor --');
+      fillSelect(getEl('selectorAlmacen'), state.almacenes, (x) => x.id, (x) => x.nombre, '-- Seleccione almacén --');
+      fillSelect(getEl('selectorFamilia'), state.familias, (x) => x.id, (x) => x.nombre, '-- Todas las familias --');
+      fillSelect(getEl('selectorSubfamilia'), state.subfamilias, (x) => x.id, (x) => x.nombre, '-- Todas las subfamilias --');
+
+      llenarItemsDropdown(state.itemsCache);
+    } catch (err) {
+      console.error(err);
+      alert('Error: ' + (err.message || err));
+    } finally {
+      hideLoading();
+    }
+  }
+
+  async function cargarConFiltros(familiaId, subfamiliaId) {
+    showLoading();
+    try {
+      let url = '/api/recepcion-data';
+      const qs = [];
+      if (familiaId) qs.push('familia_id=' + encodeURIComponent(familiaId));
+      if (subfamiliaId) qs.push('subfamilia_id=' + encodeURIComponent(subfamiliaId));
+      if (qs.length) url += '?' + qs.join('&');
+
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Error al cargar filtros');
+      const data = await resp.json();
+
+      state.itemsCache = data.items || [];
+      
+      if (!subfamiliaId) {
+        state.subfamilias = data.subfamilias || [];
+        fillSelect(getEl('selectorSubfamilia'), state.subfamilias, (x) => x.id, (x) => x.nombre, '-- Todas las subfamilias --');
+        if (familiaId) getEl('selectorSubfamilia').value = '';
+      }
+      
+      llenarItemsDropdown(state.itemsCache);
+    } catch (err) {
+      console.error(err);
+      alert('Error: ' + (err.message || err));
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // --- LÓGICA DEL CARRITO ---
+  function agregarAlCarrito() {
+    const $selItem = getEl('selectorItem');
+    if (!$selItem) return;
+    
+    const opt = $selItem.options[$selItem.selectedIndex];
+    if (!opt || !opt.value) return;
+
+    const idItem = String(opt.value);
+    const nombre = opt.textContent.split('|')[0].trim();
+    const sub = opt.getAttribute('data-sub') || '';
+
+    if (state.carrito.has(idItem)) {
+      alert('Este item ya está en el carrito. No se permiten duplicados.');
+      return;
+    }
+
+    state.carrito.set(idItem, { 
+      id_item: Number(idItem), 
+      nombre: nombre, 
+      subfamiliaNombre: sub, 
+      cantidad: 1 
+    });
+
+    const carritoList = getEl('carritoBody');
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'carrito-item';
+    itemDiv.setAttribute('data-id', idItem);
+
+    itemDiv.innerHTML = `
+      <div class="item-info">
+        <div class="item-nombre">${escapeHtml(nombre)}</div>
+        <div class="item-sub">${escapeHtml(sub)}</div>
+      </div>
+      <div class="item-controls">
+        <input type="number" class="qty-input" value="1" min="1" step="1" />
+        <button class="remove-btn" type="button" aria-label="Eliminar">✕</button>
+      </div>
+    `;
+
+    itemDiv.querySelector('.remove-btn').addEventListener('click', () => {
+      state.carrito.delete(idItem);
+      itemDiv.remove();
+    });
+
+    itemDiv.querySelector('.qty-input').addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      const qty = (!isNaN(v) && v > 0) ? v : 1;
+      state.carrito.get(idItem).cantidad = qty;
+    });
+    
+    itemDiv.querySelector('.qty-input').addEventListener('blur', (e) => {
+      // Reestablece visualmente el input si lo dejaron vacío o con letras
+      e.target.value = state.carrito.get(idItem).cantidad;
+    });
+
+    carritoList.appendChild(itemDiv);
+    $selItem.value = '';
+  }
+
+  async function procesarGuardado() {
+    if (state.carrito.size === 0) {
+      alert('El carrito está vacío');
+      return;
+    }
+
+    const id_proveedor = getEl('selectorProveedor').value;
+    const id_almacen = getEl('selectorAlmacen').value;
+    const observaciones = getEl('txtObservaciones').value;
+
+    if (!id_proveedor) return alert('Seleccione un proveedor');
+    if (!id_almacen) return alert('Seleccione un almacén');
+
+    const datosParaEnviar = {
+      id_proveedor,
+      id_almacen,
+      observaciones,
+      items: Array.from(state.carrito.values()).map(x => ({ id: x.id_item, cantidad: x.cantidad }))
+    };
+
+    showLoading();
+
+    try {
+      const response = await fetch('/api/ajuste-recepcion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datosParaEnviar)
+      });
+
+      const resultado = await response.json();
+      if (resultado && resultado.success) {
+        alert(resultado.message || 'Ajuste procesado con éxito');
+        if (window.__invexSetScreen) {
+          window.__invexSetScreen('materials');
+        } else {
+          location.href = '/';
+        }
+      } else {
+        alert('Error: ' + (resultado?.message || 'No se pudo ajustar'));
+      }
+    } catch (error) {
+      alert('Error de conexión: ' + error.message);
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // --- ASIGNACIÓN DE EVENTOS SEGUROS (Post-Render) ---
+  // Usamos setTimeout para asegurar que el elemento ya se encuentra en el DOM activo
+  setTimeout(() => {
+    getEl('selectorFamilia').addEventListener('change', async (e) => {
+      getEl('selectorSubfamilia').value = '';
+      await cargarConFiltros(e.target.value, null);
+    });
+
+    getEl('selectorSubfamilia').addEventListener('change', async (e) => {
+      const familiaId = getEl('selectorFamilia').value;
+      await cargarConFiltros(familiaId || null, e.target.value || null);
+    });
+
+    getEl('btnAddCarrito').addEventListener('click', agregarAlCarrito);
+    getEl('btnSubmitRecepcion').addEventListener('click', procesarGuardado);
+    
+    getEl('btnCancelar').addEventListener('click', () => {
+      if (window.__invexSetScreen) window.__invexSetScreen('materials');
+    });
+
+    // Toggle de Modo Microsoft
+    getEl('ms-switch').addEventListener('click', function() {
+      const mode = this.getAttribute('data-mode');
+      if (mode === 'recepcion') {
+        this.setAttribute('data-mode', 'retiro');
+        this.setAttribute('aria-checked', 'true');
+        alert('Retiro: lógica no implementada por ahora.');
+        // Revertir automáticamente ya que no está implementado
+        setTimeout(() => {
+          this.setAttribute('data-mode', 'recepcion');
+          this.setAttribute('aria-checked', 'false');
+        }, 300);
+      }
+    });
+
+    // Carga inicial de datos
+    cargarRecepcion();
+  }, 0);
+
+  return wrap;
+}
   window.__invexAddDemo = function () {
     setScreen("materials");
   };
@@ -423,7 +929,7 @@
     header.innerHTML = `
       <div class="row" style="justify-content:space-between;">
         <div>
-          <h3 class="section-title" style="margin-bottom:2px;">Inventario</h3>
+          <h3 class="section-title" style="margin-bottom:2px;">Ajuste de Inventario</h3>
           <div class="subtle small">${articles.length} artículos</div>
         </div>
 
@@ -550,6 +1056,14 @@
     const num = Number(n);
     return Number.isFinite(num) ? num.toString() : "0";
   }
+
+  // UI mode toggles (para que no reviente el formulario si aún no está implementado)
+  function aplicarModo(mode) {
+    // Por ahora no aplica estilos extra; solo evita ReferenceError.
+    // Puedes extenderlo para Retiro/Recepción cuando lo necesites.
+    return mode;
+  }
+
 
   function escapeHtml(str) {
     return String(str)

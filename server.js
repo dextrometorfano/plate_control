@@ -122,3 +122,259 @@ app.get('/api/state', async (req, res) => {
     res.status(500).json({ error: 'Error al compilar el estado del inventario' });
   }
 });
+
+/**
+ * GET: datos completos para formulario de Recepción
+ * - Calcula próximo ID de guia_recepcion
+ * - Devuelve familias, subfamilias (y items)
+ * Regla: si no se selecciona familia/subfamilia => items TODOS.
+ */
+app.get('/api/recepcion-data', async (req, res) => {
+  try {
+    const familiaId = req.query.familia_id ? Number(req.query.familia_id) : null;
+    const subfamiliaId = req.query.subfamilia_id ? Number(req.query.subfamilia_id) : null;
+
+    // Próximo ID
+    const { data: lastGuia, error: errLast } = await supabase
+      .from('guia_recepcion')
+      .select('id')
+      .order('id', { ascending: false })
+      .limit(1);
+
+    if (errLast) throw errLast;
+
+    const proximoId = (lastGuia && lastGuia.length > 0) ? (Number(lastGuia[0].id) + 1) : 1;
+
+    // Familias
+    const { data: familias, error: errFam } = await supabase
+      .from('familia')
+      .select('id, nombre')
+      .order('nombre');
+
+    if (errFam) throw errFam;
+
+    // Subfamilias (filtradas si viene familiaId, si no: todas)
+    let subQuery = supabase
+      .from('subfamilia')
+      .select('id, id_familia, nombre');
+
+    if (familiaId) subQuery = subQuery.eq('id_familia', familiaId);
+
+    const { data: subfamilias, error: errSub } = await subQuery
+      .order('nombre');
+
+    if (errSub) throw errSub;
+
+    // Listar Proveedores y Almacenes (necesario porque schema exige id_proveedor y id_almacen)
+    const { data: proveedores, error: errProv } = await supabase
+      .from('proveedor')
+      .select('id, nombre')
+      .order('nombre');
+
+    if (errProv) throw errProv;
+
+    const { data: almacenes, error: errAlm } = await supabase
+      .from('almacen')
+      .select('id, nombre')
+      .order('nombre');
+
+    if (errAlm) throw errAlm;
+
+    // Items:
+    // Regla crítica: si no se selecciona familia/subfamilia => TODOS los items (según inventario/item)
+    // En este schema, inventario es por (id_almacen, id_item), así que si no elegimos almacén
+    // deduplicamos por id_item, pero guardamos id_almacen opcional en UI (la UI deberá mandarlo).
+    let itemsQuery = supabase
+      .from('inventario')
+      .select(`
+        id,
+        cantidad,
+        id_item,
+        id_almacen,
+        item (
+          id,
+          nombre,
+          descripcion,
+          subfamilia (
+            id,
+            id_familia,
+            nombre,
+            familia ( id, nombre )
+          )
+        )
+      `);
+
+    if (subfamiliaId) {
+      itemsQuery = itemsQuery.eq('item.subfamilia.id', subfamiliaId);
+    } else if (familiaId) {
+      itemsQuery = itemsQuery.eq('item.subfamilia.id_familia', familiaId);
+    }
+
+    const { data: invRows, error: errInv } = await itemsQuery;
+    if (errInv) throw errInv;
+
+    // Deduplicar por id_item (mostramos 1 option por item). Guardamos un id_almacen ejemplo para que UI
+    // pueda usarlo si decide auto-seleccionar; pero el POST real usará el id_almacen elegido.
+    const mapByItem = new Map();
+    (invRows || []).forEach((r) => {
+      const it = r.item;
+      if (!it) return;
+
+      const idItem = it.id;
+      if (idItem == null) return;
+
+      if (!mapByItem.has(idItem)) {
+        mapByItem.set(idItem, {
+          itemId: idItem,
+          itemNombre: it.nombre || '',
+          descripcion: it.descripcion || null,
+          subfamiliaId: it.subfamilia?.id ?? null,
+          subfamiliaNombre: it.subfamilia?.nombre ?? '',
+          familiaId: it.subfamilia?.id_familia ?? null,
+          familiaNombre: it.subfamilia?.familia?.nombre ?? '',
+          // cantidad es la del inventario para el primer row que aparezca
+          cantidad: r.cantidad ?? 0,
+          // id_almacen sugerido (para opción/preview)
+          sugeridoAlmacenId: r.id_almacen ?? null
+        });
+      }
+    });
+
+    const items = Array.from(mapByItem.values()).sort((a, b) => {
+      const af = `${a.familiaNombre}`.toLowerCase();
+      const bf = `${b.familiaNombre}`.toLowerCase();
+      if (af !== bf) return af.localeCompare(bf);
+      const as = `${a.subfamiliaNombre}`.toLowerCase();
+      const bs = `${b.subfamiliaNombre}`.toLowerCase();
+      if (as !== bs) return as.localeCompare(bs);
+      return `${a.itemNombre}`.toLowerCase().localeCompare(`${b.itemNombre}`.toLowerCase());
+    });
+
+    res.json({
+      proximoId,
+      familias: familias || [],
+      subfamilias: subfamilias || [],
+      proveedores: proveedores || [],
+      almacenes: almacenes || [],
+      items
+    });
+  } catch (error) {
+    console.error("❌ Error en /api/recepcion-data:", error.message || error);
+    res.status(500).json({ error: 'Error al cargar datos de recepción' });
+  }
+});
+
+/**
+ * POST: Ajustar inventario por modalidad Recepción
+ * Inserta guía_recepcion + det_guia_recepcion y suma stock en inventario.
+ */
+app.post('/api/ajuste-recepcion', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const observaciones = body.observaciones || '';
+    const id_proveedor = body.id_proveedor;
+    const id_almacen = body.id_almacen;
+    const items = Array.isArray(body.items) ? body.items : [];
+
+    if (!id_proveedor) {
+      return res.status(400).json({ success: false, message: "Falta id_proveedor" });
+    }
+    if (!id_almacen) {
+      return res.status(400).json({ success: false, message: "Falta id_almacen" });
+    }
+    if (!items.length) {
+      return res.status(400).json({ success: false, message: "No hay items para ajustar" });
+    }
+
+    // Validar cantidades > 0 (det_guia_recepcion.chk_guia_cantidad)
+    const cleanItems = items
+      .map((it) => ({
+        id_item: Number(it.id),
+        cantidad: Number(it.cantidad)
+      }))
+      .filter((it) => Number.isFinite(it.id_item) && Number.isFinite(it.cantidad) && it.cantidad > 0);
+
+    if (!cleanItems.length) {
+      return res.status(400).json({ success: false, message: "Todas las cantidades deben ser > 0" });
+    }
+
+    // Próximo ID de guía
+    const { data: lastGuia, error: errLast } = await supabase
+      .from('guia_recepcion')
+      .select('id')
+      .order('id', { ascending: false })
+      .limit(1);
+    if (errLast) throw errLast;
+
+    const proximoId = (lastGuia && lastGuia.length > 0) ? (Number(lastGuia[0].id) + 1) : 1;
+
+    // Inserta guía
+    const guiaInsertPayload = {
+      id: proximoId,
+      fecha_recepcion: new Date().toISOString(),
+      id_proveedor: Number(id_proveedor),
+      observaciones
+    };
+
+    const { error: errGuia } = await supabase
+      .from('guia_recepcion')
+      .insert(guiaInsertPayload);
+
+    if (errGuia) throw errGuia;
+
+    // Insert det_guia_recepcion (batch)
+    const detPayload = cleanItems.map((it) => ({
+      id_guia: proximoId,
+      id_item: it.id_item,
+      cantidad: it.cantidad
+    }));
+
+    const { error: errDet } = await supabase
+      .from('det_guia_recepcion')
+      .insert(detPayload);
+
+    if (errDet) throw errDet;
+
+    // Actualiza inventario SUMANDO cantidad por (id_almacen + id_item)
+    for (const it of cleanItems) {
+      const { data: invRow, error: errRow } = await supabase
+        .from('inventario')
+        .select('id, cantidad')
+        .eq('id_almacen', Number(id_almacen))
+        .eq('id_item', it.id_item)
+        .limit(1);
+
+      if (errRow) throw errRow;
+
+      if (!invRow || invRow.length === 0) {
+        const { error: errIns } = await supabase
+          .from('inventario')
+          .insert({
+            id_almacen: Number(id_almacen),
+            id_item: it.id_item,
+            cantidad: it.cantidad
+          });
+
+        if (errIns) throw errIns;
+      } else {
+        const newCantidad = Number(invRow[0].cantidad) + it.cantidad;
+
+        const { error: errUpd } = await supabase
+          .from('inventario')
+          .update({ cantidad: newCantidad })
+          .eq('id', invRow[0].id);
+
+        if (errUpd) throw errUpd;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: "Inventario ajustado correctamente",
+      id_guia: proximoId
+    });
+  } catch (error) {
+    console.error("❌ Error en /api/ajuste-recepcion:", error.message || error);
+    res.status(500).json({ success: false, message: error.message || 'Error al ajustar inventario' });
+  }
+});

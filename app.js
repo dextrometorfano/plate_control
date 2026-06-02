@@ -1,9 +1,29 @@
-(function () {
-  const state = window.__INVEX_STATE__ || {
+(async function () {
+  // 1. Intentar descargar los datos reales desde tu base de datos de Supabase a través del servidor
+  let state = {
     stats: { totalArticulos: 0, escaneados: 0, restantes: 0 },
     articles: [],
     activity: []
   };
+
+  try {
+    // Como el frontend y el backend están en el mismo dominio de Azure, basta con usar la ruta relativa
+    const response = await fetch('/api/state');
+    if (!response.ok) throw new Error('Error al conectar con la base de datos');
+    
+    const dbData = await response.json();
+    // Combinamos la estructura recibida con nuestro estado local
+    state = Object.assign(state, dbData);
+  } catch (error) {
+    console.error("❌ Error cargando inventario real:", error);
+    // Mensaje visual de error por si falla Supabase o la red
+    state.activity.push({ 
+      id: "err", 
+      titulo: "Error de Conexión", 
+      detalle: "No se pudo sincronizar con el almacén central.", 
+      tiempo: "Ahora" 
+    });
+  }
 
   const $content = document.getElementById("content");
   const $bottomNav = document.getElementById("bottomNav");

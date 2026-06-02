@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
+const path = require('path');
 require('dotenv').config(); // Solo para desarrollo local con un archivo .env
 
 const app = express();
@@ -20,7 +21,12 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 // Cliente global de Supabase listo para usar
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 2. Ruta de prueba (Ping) para verificar en tu App Service que el backend responde
+app.use(express.static(path.join(__dirname)));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: "online", 

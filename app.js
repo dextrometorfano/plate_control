@@ -108,7 +108,7 @@
     if (!$topbar) return;
 
     const titles = {
-      dashboard: "Invex",
+      dashboard: "FAMECA",
       scanner: "Escáner de códigos",
       add: "Añadir artículo",
       materials: "Materiales",
@@ -126,7 +126,7 @@
         </div>
 
         <div style="min-width:0;">
-          <div class="title">${escapeHtml(titles[screenId] || "Invex")}</div>
+          <div class="title">${escapeHtml(titles[screenId] || "Gestión de Planchas")}</div>
           <div class="subtitle">${escapeHtml(sub)}</div>
         </div>
 

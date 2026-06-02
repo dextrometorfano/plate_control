@@ -42,8 +42,8 @@
 
   const navItems = [
     { id: "dashboard", label: "Inicio", icon: homeIcon },
-    { id: "materials", label: "Materiales", icon: packageIcon },
-    { id: "add", label: "Añadir", icon: plusIcon },
+    { id: "materials", label: "Material", icon: packageIcon },
+    { id: "add", label: "Ajuste", icon: plusIcon },
     { id: "scanner", label: "Escáner", icon: scanIcon },
     { id: "profile", label: "Perfil", icon: userIcon }
   ];
@@ -108,23 +108,22 @@
     if (!$topbar) return;
 
     const titles = {
-      dashboard: "FAMECA",
+      dashboard: "Inicio",
       scanner: "Escáner de códigos",
       add: "Añadir artículo",
       materials: "Materiales",
-      inventory: "Inventario",
+      inventory: "Ajuste de inventario",
       reports: "Informes",
       profile: "Perfil"
     };
 
-    const sub = "Inventario móvil";
+    const sub = "Gestión de Planchas";
 
     $topbar.innerHTML = `
       <div class="brand" style="width:100%; max-width:430px;">
         <div class="brand-mark">
           <img alt="Invex" src="${safeAsset("src/assets/invex-logo.png")}" onerror="this.style.display='none'"/>
         </div>
-
         <div style="min-width:0;">
           <div class="title">${escapeHtml(titles[screenId] || "Gestión de Planchas")}</div>
           <div class="subtitle">${escapeHtml(sub)}</div>
@@ -155,16 +154,12 @@
 
     wrap.innerHTML = `
       <div class="welcome">
-        <div class="logo-bubble">
-          <img alt="RADEEL" src="${safeAsset("src/assets/radeel-logo.png")}" onerror="this.style.display='none'"/>
-        </div>
-        <div>
-          <h2 class="h-hero" style="margin-bottom:2px;">¡Hola!</h2>
-          <p class="subtle small">Gestiona tu inventario fácilmente</p>
-        </div>
+      <div>
+        <h2 class="h-hero" style="margin-bottom:2px;">¡Hola!</h2>
+        <p class="subtle small">Gestiona tu inventario fácilmente</p>
+      </div>
       </div>
     `;
-
     const cta = document.createElement("section");
     cta.className = "card cta";
     cta.innerHTML = `
@@ -259,20 +254,13 @@
           <div style="background:#fff; padding:6px; border-radius:12px; border:1px solid var(--border); box-shadow: var(--shadow-sm);">
             <img alt="Invex" src="${safeAsset("src/assets/invex-logo.png")}" style="width:24px; height:24px; object-fit:contain;" onerror="this.style.display='none'"/>
           </div>
-
           <div>
-            <div style="color:#fff; font-weight:900; font-size:16px;">Invex</div>
-            <div style="color:rgba(255,255,255,.85); font-weight:750; font-size:12px; margin-top:2px;">RADEEL Inventory</div>
+            <div style="color:#fff; font-weight:900; font-size:16px;">FAMECA</div>
           </div>
-        </div>
-
-        <div style="background:rgba(255,255,255,.10); padding:6px; border-radius:999px;">
-          <img alt="RADEEL" src="${safeAsset("src/assets/radeel-logo.png")}" style="width:18px; height:18px; object-fit:contain;" onerror="this.style.display='none'"/>
         </div>
       </div>
     `;
     wrap.appendChild(footer);
-
     return wrap;
   }
 

@@ -1,9 +1,10 @@
 {
-  "name": "clone",
+  "name": "fmcplateinventory",
   "version": "1.0.0",
-  "description": "",
-  "main": "app.js",
+  "description": "steelplates",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -19,6 +20,9 @@
   },
   "homepage": "https://github.com/dextrometorfano/plate_control#readme",
   "dependencies": {
+    "@supabase/supabase-js": "^2.107.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1"
   }
 }

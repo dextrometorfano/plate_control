@@ -1,8 +1,3 @@
-/* Vanilla JS app para la demo de Inventario (Invex)
-   - Navegación por pantallas
-   - Render dinámico usando datos de window.__INVEX_STATE__
-   - Sin Tailwind, sin React, sin Vite
-*/
 (function () {
   const state = window.__INVEX_STATE__ || {
     stats: { totalArticulos: 0, escaneados: 0, restantes: 0 },
@@ -550,11 +545,11 @@
 
   function escapeHtml(str) {
     return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "<")
-      .replaceAll(">", ">")
-      .replaceAll('"', """)
-      .replaceAll("'", "&#039;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
   }
 
   function safeAsset(rel) {

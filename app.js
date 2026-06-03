@@ -906,7 +906,9 @@ function renderAdd() {
       // Después de auto-seleccionar familia, recargar items filtrados por subtipo
       const familiaIdFinal = $selFamilia.disabled ? $selFamilia.value : familiaSelId;
 
-      await cargarConFiltros(familiaIdFinal || null, subId);
+      // Asegurar que el filtro por subfamilia realmente se aplique al backend.
+      // Si subId existe, forzamos familiaIdFinal solo como apoyo (pero el filtro principal será subfamiliaId).
+      await cargarConFiltros($selFamilia.value || null, subId);
     });
 
     getEl('btnAddCarrito').addEventListener('click', agregarAlCarrito);

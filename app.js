@@ -650,7 +650,7 @@ function renderAdd() {
     const $selItem = getEl('selectorItem');
     if (!$selItem) return;
     $selItem.innerHTML = '';
-    
+
     const opt0 = document.createElement('option');
     opt0.value = '';
     opt0.textContent = '-- Seleccione un item --';
@@ -658,11 +658,15 @@ function renderAdd() {
 
     (items || []).forEach((it) => {
       const opt = document.createElement('option');
-      opt.value = it.itemId;
+
+      // IMPORTANTE:
+      // El server ahora devuelve items distinguiendo por (id_item, id_almacen).
+      // La UI debe usar una clave compuesta para que el filtro no "mezcle" registros.
+      const almId = it.sugeridoAlmacenId ?? null;
+      const idItem = it.itemId;
+      opt.value = `${idItem}|${almId ?? ''}`;
 
       // Mostrar subtipo al inicio del nombre del item
-      // Antes: itemNombre | subfamiliaNombre
-      // Ahora: subfamiliaNombre itemNombre
       const disp = `${it.subfamiliaNombre || ''} ${it.itemNombre || ''}`.trim();
       opt.textContent = disp;
 
@@ -671,6 +675,8 @@ function renderAdd() {
       opt.setAttribute('data-fam', it.familiaNombre || '');
       opt.setAttribute('data-subid', it.subfamiliaId ?? '');
       opt.setAttribute('data-famid', it.familiaId ?? '');
+      opt.setAttribute('data-iditem', idItem ?? '');
+      opt.setAttribute('data-idalmacen', almId ?? '');
       $selItem.appendChild(opt);
     });
   }
@@ -745,10 +751,15 @@ function renderAdd() {
     const opt = $selItem.options[$selItem.selectedIndex];
     if (!opt || !opt.value) return;
 
-    const idItem = String(opt.value);
+    // El server/ UI ahora identifica la opción por (id_item, id_almacen)
+    // y `opt.value` ya viene como: `${id_item}|${id_almacen}`
+    const idItemCompuesta = String(opt.value);
 
     const sub = (opt.getAttribute('data-sub') || '').trim();
     const fam = (opt.getAttribute('data-fam') || '').trim();
+
+    const idItemSolo = String(opt.getAttribute('data-iditem') || '').trim();
+    const almIdSolo = String(opt.getAttribute('data-idalmacen') || '').trim();
 
     // En UI ahora el display es: "{sub} {itemNombre}"
     // Construimos el nombre del carrito usando los atributos (evita errores de parseo por texto)

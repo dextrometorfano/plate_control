@@ -215,7 +215,10 @@ app.get('/api/recepcion-data', async (req, res) => {
 
     // Deduplicar por id_item (mostramos 1 option por item). Guardamos un id_almacen ejemplo para que UI
     // pueda usarlo si decide auto-seleccionar; pero el POST real usará el id_almacen elegido.
-    const mapByItem = new Map();
+    // IMPORTANTE:
+    // `inventario` puede tener el mismo id_item en múltiples almacenes.
+    // Para que el dropdown no "mezcle" registros, deduplicamos por (id_item, id_almacen).
+    const mapByItemAlmacen = new Map();
     (invRows || []).forEach((r) => {
       const it = r.item;
       if (!it) return;
@@ -223,8 +226,11 @@ app.get('/api/recepcion-data', async (req, res) => {
       const idItem = it.id;
       if (idItem == null) return;
 
-      if (!mapByItem.has(idItem)) {
-        mapByItem.set(idItem, {
+      const sugeridoAlmacenId = r.id_almacen ?? null;
+      const key = `${idItem}|${sugeridoAlmacenId ?? ''}`;
+
+      if (!mapByItemAlmacen.has(key)) {
+        mapByItemAlmacen.set(key, {
           itemId: idItem,
           itemNombre: it.nombre || '',
           descripcion: it.descripcion || null,
@@ -234,13 +240,13 @@ app.get('/api/recepcion-data', async (req, res) => {
           familiaNombre: it.subfamilia?.familia?.nombre ?? '',
           // cantidad es la del inventario para el primer row que aparezca
           cantidad: r.cantidad ?? 0,
-          // id_almacen sugerido (para opción/preview)
-          sugeridoAlmacenId: r.id_almacen ?? null
+          // clave de almacén para que la UI distinga la variante por ubicación
+          sugeridoAlmacenId
         });
       }
     });
 
-    const items = Array.from(mapByItem.values()).sort((a, b) => {
+    const items = Array.from(mapByItemAlmacen.values()).sort((a, b) => {
       const af = `${a.familiaNombre}`.toLowerCase();
       const bf = `${b.familiaNombre}`.toLowerCase();
       if (af !== bf) return af.localeCompare(bf);

@@ -832,52 +832,56 @@ function agregarAlCarrito() {
     $selItem.value = ''; // Resetear el selector
   }
 
-  async function procesarGuardado() {
-    if (state.carrito.size === 0) {
-      alert('El carrito está vacío');
-      return;
-    }
-
-    const id_proveedor = getEl('selectorProveedor').value;
-    const id_almacen = getEl('selectorAlmacen').value;
-    const observaciones = getEl('txtObservaciones').value;
-
-    if (!id_proveedor) return alert('Seleccione un proveedor');
-    if (!id_almacen) return alert('Seleccione un almacén');
-
-    const datosParaEnviar = {
-      id_proveedor,
-      id_almacen,
-      observaciones,
-      items: Array.from(state.carrito.values()).map(x => ({ id: x.id_item, cantidad: x.cantidad }))
-    };
-
-    showLoading();
-
-    try {
-      const response = await fetch('/api/ajuste-recepcion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(datosParaEnviar)
-      });
-
-      const resultado = await response.json();
-      if (resultado && resultado.success) {
-        alert(resultado.message || 'Ajuste procesado con éxito');
-        if (window.__invexSetScreen) {
-          window.__invexSetScreen('materials');
-        } else {
-          location.href = '/';
-        }
-      } else {
-        alert('Error: ' + (resultado?.message || 'No se pudo ajustar'));
-      }
-    } catch (error) {
-      alert('Error de conexión: ' + error.message);
-    } finally {
-      hideLoading();
-    }
+async function procesarGuardado() {
+  if (state.carrito.size === 0) {
+    alert('El carrito está vacío');
+    return;
   }
+
+  // 1. Obtener los valores directamente del DOM en el momento del click
+  const id_proveedor = getEl('selectorProveedor').value;
+  const id_almacen = getEl('selectorAlmacen').value; // <-- Clave para que viaje el almacén
+  const observaciones = getEl('txtObservaciones').value;
+
+  // 2. Validaciones previas al envío
+  if (!id_proveedor) return alert('Seleccione un proveedor');
+  if (!id_almacen) return alert('Seleccione un almacén');
+
+  // 3. Preparación del objeto (Tu código)
+  const datosParaEnviar = {
+    id_proveedor,  // Pasa el valor del selector proveedor
+    id_almacen,    // Pasa el valor del selector almacén
+    observaciones, // Pasa el texto del textarea
+    // Transforma el Map del carrito en el array plano [{id: X, cantidad: Y}] que el server espera
+    items: Array.from(state.carrito.values()).map(x => ({ id: x.id_item, cantidad: x.cantidad }))
+  };
+
+  showLoading();
+
+  try {
+    const response = await fetch('/api/ajuste-recepcion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datosParaEnviar) // <-- Aquí se convierte a JSON string final
+    });
+
+    const resultado = await response.json();
+    if (resultado && resultado.success) {
+      alert(resultado.message || 'Ajuste procesado con éxito');
+      if (window.__invexSetScreen) {
+        window.__invexSetScreen('materials');
+      } else {
+        location.href = '/';
+      }
+    } else {
+      alert('Error: ' + (resultado?.message || 'No se pudo ajustar'));
+    }
+  } catch (error) {
+    alert('Error de conexión: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
 
   // --- ASIGNACIÓN DE EVENTOS SEGUROS (Post-Render) ---
   // Usamos setTimeout para asegurar que el elemento ya se encuentra en el DOM activo

@@ -35,13 +35,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 3. El puerto lo asignará Azure App Service dinámicamente mediante la variable PORT
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor base de Invex listo en el puerto ${PORT}`);
-});
-
-// Endpoint para alimentar el estado inicial del frontend mapeado con tu DB real
+/**
+ * GET: Endpoint para alimentar el estado inicial del frontend mapeado con tu DB real
+ */
 app.get('/api/state', async (req, res) => {
   try {
     // 1. Consultar la lista de items con sus relaciones (Equivalente a tu VISTA INVENTARIO)
@@ -65,18 +61,12 @@ app.get('/api/state', async (req, res) => {
 
     // 2. Mapear los datos de tu DB al formato exacto que espera tu app.js
     const articles = invData.map((row) => {
-      // Equivalente a tu SQL: CONCAT_WS(' ', sb.nombre, i.nombre) AS item
       const subfamiliaNombre = row.item?.subfamilia?.nombre || '';
       const itemNombre = row.item?.nombre || '';
       const itemCompleto = `${subfamiliaNombre} ${itemNombre}`.trim();
-
-      // Equivalente a tu SQL: f.nombre AS familia
       const familiaNombre = row.item?.subfamilia?.familia?.nombre || '';
-
-      // Equivalente a tu SQL: alm.nombre AS ubicacion
       const ubicacion = row.almacen?.nombre || '';
 
-      // Validación visual (critico/bajo) según cantidad
       let estadoVisual = 'ok';
       if (row.cantidad === 0) {
         estadoVisual = 'danger'; // Crítico
@@ -96,7 +86,7 @@ app.get('/api/state', async (req, res) => {
 
     // 3. Calcular los contadores rápidos para el panel principal (stats)
     const totalArticulos = articles.length;
-    const escaneados = articles.filter(a => a.stock > 0).length; // Simulación lógica basada en disponibilidad
+    const escaneados = articles.filter(a => a.stock > 0).length; 
     const restantes = totalArticulos - escaneados;
 
     // 4. Retornar la estructura limpia requerida por el frontend
@@ -125,16 +115,15 @@ app.get('/api/state', async (req, res) => {
 
 /**
  * GET: datos completos para formulario de Recepción
- * - Calcula próximo ID de guia_recepcion
- * - Devuelve familias, subfamilias (y items)
- * Regla: si no se selecciona familia/subfamilia => items TODOS.
+ * - Calcula próximo ID visual de guia_recepcion
+ * - Devuelve familias, subfamilias, proveedores, almacenes e items estructurados
  */
 app.get('/api/recepcion-data', async (req, res) => {
   try {
     const familiaId = req.query.familia_id ? Number(req.query.familia_id) : null;
     const subfamiliaId = req.query.subfamilia_id ? Number(req.query.subfamilia_id) : null;
 
-    // Próximo ID
+    // Próximo ID (Sólo para uso visual en el frontend)
     const { data: lastGuia, error: errLast } = await supabase
       .from('guia_recepcion')
       .select('id')
@@ -153,19 +142,17 @@ app.get('/api/recepcion-data', async (req, res) => {
 
     if (errFam) throw errFam;
 
-    // Subfamilias (filtradas si viene familiaId, si no: todas)
+    // Subfamilias 
     let subQuery = supabase
       .from('subfamilia')
       .select('id, id_familia, nombre');
 
     if (familiaId) subQuery = subQuery.eq('id_familia', familiaId);
 
-    const { data: subfamilias, error: errSub } = await subQuery
-      .order('nombre');
-
+    const { data: subfamilias, error: errSub } = await subQuery.order('nombre');
     if (errSub) throw errSub;
 
-    // Listar Proveedores y Almacenes (necesario porque schema exige id_proveedor y id_almacen)
+    // Proveedores y Almacenes
     const { data: proveedores, error: errProv } = await supabase
       .from('proveedor')
       .select('id, nombre')
@@ -180,10 +167,7 @@ app.get('/api/recepcion-data', async (req, res) => {
 
     if (errAlm) throw errAlm;
 
-    // Items:
-    // Regla crítica: si no se selecciona familia/subfamilia => TODOS los items (según inventario/item)
-    // En este schema, inventario es por (id_almacen, id_item), así que si no elegimos almacén
-    // deduplicamos por id_item, pero guardamos id_almacen opcional en UI (la UI deberá mandarlo).
+    // Items
     let itemsQuery = supabase
       .from('inventario')
       .select(`
@@ -213,21 +197,15 @@ app.get('/api/recepcion-data', async (req, res) => {
     const { data: invRows, error: errInv } = await itemsQuery;
     if (errInv) throw errInv;
 
-    // Deduplicar por id_item (mostramos 1 option por item). Guardamos un id_almacen ejemplo para que UI
-    // pueda usarlo si decide auto-seleccionar; pero el POST real usará el id_almacen elegido.
-    // IMPORTANTE:
-    // `inventario` puede tener el mismo id_item en múltiples almacenes.
-    // Para que el dropdown no "mezcle" registros, deduplicamos por (id_item, id_almacen).
+    // Deduplicar por (id_item, id_almacen) para evitar colisiones en la UI
     const mapByItemAlmacen = new Map();
     (invRows || []).forEach((r) => {
       const it = r.item;
-      if (!it) return;
+      if (!it || it.id == null) return;
 
       const idItem = it.id;
-      if (idItem == null) return;
-
       const sugeridoAlmacenId = r.id_almacen ?? null;
-      const key = `${idItem}|${sugeridoAlmacenId ?? ''}`;
+      const key = `${idItem}|${sugeridAlmacenId ?? ''}`;
 
       if (!mapByItemAlmacen.has(key)) {
         mapByItemAlmacen.set(key, {
@@ -238,9 +216,7 @@ app.get('/api/recepcion-data', async (req, res) => {
           subfamiliaNombre: it.subfamilia?.nombre ?? '',
           familiaId: it.subfamilia?.id_familia ?? null,
           familiaNombre: it.subfamilia?.familia?.nombre ?? '',
-          // cantidad es la del inventario para el primer row que aparezca
           cantidad: r.cantidad ?? 0,
-          // clave de almacén para que la UI distinga la variante por ubicación
           sugeridoAlmacenId
         });
       }
@@ -271,8 +247,8 @@ app.get('/api/recepcion-data', async (req, res) => {
 });
 
 /**
- * POST: Ajustar inventario por modalidad Recepción
- * Inserta guía_recepcion + det_guia_recepcion y suma stock en inventario.
+ * POST: Registro exclusivo a dos tablas (guia_recepcion y det_guia_recepcion)
+ * Respeta el id serial de la base de datos de manera atómica.
  */
 app.post('/api/ajuste-recepcion', async (req, res) => {
   try {
@@ -282,6 +258,7 @@ app.post('/api/ajuste-recepcion', async (req, res) => {
     const id_almacen = body.id_almacen;
     const items = Array.isArray(body.items) ? body.items : [];
 
+    // Validaciones iniciales de parámetros requeridos
     if (!id_proveedor) {
       return res.status(400).json({ success: false, message: "Falta id_proveedor" });
     }
@@ -292,7 +269,7 @@ app.post('/api/ajuste-recepcion', async (req, res) => {
       return res.status(400).json({ success: false, message: "No hay items para ajustar" });
     }
 
-    // Validar cantidades > 0 (det_guia_recepcion.chk_guia_cantidad)
+    // Filtrado y sanitización de datos (Garantiza restricción chk_guia_cantidad > 0)
     const cleanItems = items
       .map((it) => ({
         id_item: Number(it.id),
@@ -304,34 +281,29 @@ app.post('/api/ajuste-recepcion', async (req, res) => {
       return res.status(400).json({ success: false, message: "Todas las cantidades deben ser > 0" });
     }
 
-    // Próximo ID de guía
-    const { data: lastGuia, error: errLast } = await supabase
-      .from('guia_recepcion')
-      .select('id')
-      .order('id', { ascending: false })
-      .limit(1);
-    if (errLast) throw errLast;
-
-    const proximoId = (lastGuia && lastGuia.length > 0) ? (Number(lastGuia[0].id) + 1) : 1;
-
-    // Inserta guía
+    // PASO 1: Inserción limpia en tabla 'guia_recepcion'
     const guiaInsertPayload = {
-      id: proximoId,
-      fecha_recepcion: new Date().toISOString(),
-      id_proveedor: Number(id_proveedor),
-      observaciones
+      fecha_recepcion: new Date().toISOString(), 
+      id_proveedor: Number(id_proveedor),        
+      id_almacen: Number(id_almacen),            
+      observaciones: observaciones               
     };
 
-    const { error: errGuia } = await supabase
+    // Dejamos que Postgres asigne el ID Serial y lo recuperamos inmediatamente con .select()
+    const { data: nuevaGuia, error: errGuia } = await supabase
       .from('guia_recepcion')
-      .insert(guiaInsertPayload);
+      .insert(guiaInsertPayload)
+      .select('id')
+      .single();
 
     if (errGuia) throw errGuia;
+    
+    const guiaIdGenerado = nuevaGuia.id;
 
-    // Insert det_guia_recepcion (batch)
+    // PASO 2: Inserción en bloque (Batch) en tabla 'det_guia_recepcion'
     const detPayload = cleanItems.map((it) => ({
-      id_guia: proximoId,
-      id_item: it.id_item,
+      id_guia: guiaIdGenerado,     // Amarrado al ID real autogenerado
+      id_item: it.id_item,      
       cantidad: it.cantidad
     }));
 
@@ -341,46 +313,21 @@ app.post('/api/ajuste-recepcion', async (req, res) => {
 
     if (errDet) throw errDet;
 
-    // Actualiza inventario SUMANDO cantidad por (id_almacen + id_item)
-    for (const it of cleanItems) {
-      const { data: invRow, error: errRow } = await supabase
-        .from('inventario')
-        .select('id, cantidad')
-        .eq('id_almacen', Number(id_almacen))
-        .eq('id_item', it.id_item)
-        .limit(1);
-
-      if (errRow) throw errRow;
-
-      if (!invRow || invRow.length === 0) {
-        const { error: errIns } = await supabase
-          .from('inventario')
-          .insert({
-            id_almacen: Number(id_almacen),
-            id_item: it.id_item,
-            cantidad: it.cantidad
-          });
-
-        if (errIns) throw errIns;
-      } else {
-        const newCantidad = Number(invRow[0].cantidad) + it.cantidad;
-
-        const { error: errUpd } = await supabase
-          .from('inventario')
-          .update({ cantidad: newCantidad })
-          .eq('id', invRow[0].id);
-
-        if (errUpd) throw errUpd;
-      }
-    }
-
+    // Respuesta exitosa
     res.json({
       success: true,
-      message: "Inventario ajustado correctamente",
-      id_guia: proximoId
+      message: "Guía y detalles registrados correctamente en la base de datos.",
+      id_guia: guiaIdGenerado
     });
+
   } catch (error) {
-    console.error("❌ Error en /api/ajuste-recepcion:", error.message || error);
-    res.status(500).json({ success: false, message: error.message || 'Error al ajustar inventario' });
+    console.error("❌ Error en el servidor /api/ajuste-recepcion:", error.message || error);
+    res.status(500).json({ success: false, message: error.message || 'Error al procesar el guardado multitabla' });
   }
+});
+
+// Asignación dinámica del puerto para Azure App Service o local
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor base listo en el puerto ${PORT}`);
 });

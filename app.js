@@ -696,6 +696,7 @@ function renderAdd() {
       state.proveedores = data.proveedores || [];
       state.almacenes = data.almacenes || [];
       state.familias = data.familias || [];
+      state.itemsCacheCompleto = data.items || [];
       state.itemsCache = data.items || [];
       state.subfamilias = data.subfamilias || [];
 
@@ -713,77 +714,84 @@ function renderAdd() {
     }
   }
 
-  async function cargarConFiltros(familiaId, subfamiliaId) {
-    showLoading();
-    try {
-      let url = '/api/recepcion-data';
-      const qs = [];
-      if (familiaId) qs.push('familia_id=' + encodeURIComponent(familiaId));
-      if (subfamiliaId) qs.push('subfamilia_id=' + encodeURIComponent(subfamiliaId));
-      if (qs.length) url += '?' + qs.join('&');
+async function cargarConFiltros(familiaId, subfamiliaId) {
+  showLoading();
+  try {
+    let url = '/api/recepcion-data';
+    const qs = [];
+    if (familiaId) qs.push('familia_id=' + encodeURIComponent(familiaId));
+    if (subfamiliaId) qs.push('subfamilia_id=' + encodeURIComponent(subfamiliaId));
+    if (qs.length) url += '?' + qs.join('&');
 
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('Error al cargar filtros');
-      const data = await resp.json();
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('Error al cargar filtros');
+    const data = await resp.json();
 
-      state.itemsCache = data.items || [];
-      
-      if (!subfamiliaId) {
-        state.subfamilias = data.subfamilias || [];
-        fillSelect(getEl('selectorSubfamilia'), state.subfamilias, (x) => x.id, (x) => x.nombre, '-- Todas las subfamilias --');
-        if (familiaId) getEl('selectorSubfamilia').value = '';
-      }
-      
-      llenarItemsDropdown(state.itemsCache);
-    } catch (err) {
-      console.error(err);
-      alert('Error: ' + (err.message || err));
-    } finally {
-      hideLoading();
+    let itemsFiltrados = data.items || [];
+
+    // 👉 SALVAGUARDA frontend: Si el server devolvió todo por error, lo filtramos a la fuerza
+    if (subfamiliaId) {
+      itemsFiltrados = itemsFiltrados.filter(it => String(it.subfamiliaId) === String(subfamiliaId));
+    } else if (familiaId) {
+      itemsFiltrados = itemsFiltrados.filter(it => String(it.familiaId) === String(familiaId));
     }
-  }
 
-  // --- LÓGICA DEL CARRITO ---
-  function agregarAlCarrito() {
+    state.itemsCache = itemsFiltrados;
+    
+    if (!subfamiliaId) {
+      state.subfamilias = data.subfamilias || [];
+      fillSelect(getEl('selectorSubfamilia'), state.subfamilias, (x) => x.id, (x) => x.nombre, '-- Todas las subfamilias --');
+      if (familiaId) getEl('selectorSubfamilia').value = '';
+    }
+    
+    // Ahora el dropdown solo recibirá el set limpio y sanitizado
+    llenarItemsDropdown(state.itemsCache);
+  } catch (err) {
+    console.error(err);
+    alert('Error: ' + (err.message || err));
+  } finally {
+    hideLoading();
+  }
+}
+function agregarAlCarrito() {
     const $selItem = getEl('selectorItem');
     if (!$selItem) return;
     
     const opt = $selItem.options[$selItem.selectedIndex];
     if (!opt || !opt.value) return;
 
-    // El server/ UI ahora identifica la opción por (id_item, id_almacen)
-    // y `opt.value` ya viene como: `${id_item}|${id_almacen}`
-    const idItemCompuesta = String(opt.value);
-
-    const sub = (opt.getAttribute('data-sub') || '').trim();
-    const fam = (opt.getAttribute('data-fam') || '').trim();
-
+    // 1. Obtener identificadores correctos
+    const idItemCompuesta = String(opt.value); 
     const idItemSolo = String(opt.getAttribute('data-iditem') || '').trim();
-    const almIdSolo = String(opt.getAttribute('data-idalmacen') || '').trim();
+    const fam = (opt.getAttribute('data-fam') || '').trim();
+    const sub = (opt.getAttribute('data-sub') || '').trim();
 
-    // En UI ahora el display es: "{sub} {itemNombre}"
-    // Construimos el nombre del carrito usando los atributos (evita errores de parseo por texto)
-    // Si por alguna razón `sub` no coincide con el prefijo del display, caemos al display completo.
+    // 2. Procesar nombres para visualización
     const display = (opt.textContent || '').trim();
     const nombreItemRemanente = display.startsWith(sub) ? display.slice(sub.length).trim() : display;
     const nombre = `${sub} ${nombreItemRemanente}`.trim() || display;
 
-    if (state.carrito.has(idItem)) {
+    // 3. Validar duplicados usando la clave compuesta (Item + Almacén)
+    if (state.carrito.has(idItemCompuesta)) {
       alert('Este item ya está en el carrito. No se permiten duplicados.');
       return;
     }
 
-    state.carrito.set(idItem, { 
-      id_item: Number(idItem), 
+    // 4. Guardar en el estado local
+    state.carrito.set(idItemCompuesta, { 
+      id_item: Number(idItemSolo), // ID limpio que espera el servidor
       nombre: nombre, 
       subfamiliaNombre: sub, 
       cantidad: 1 
     });
 
+    // 5. Renderizar en el DOM
     const carritoList = getEl('carritoBody');
+    if (!carritoList) return;
+
     const itemDiv = document.createElement('div');
     itemDiv.className = 'carrito-item';
-    itemDiv.setAttribute('data-id', idItem);
+    itemDiv.setAttribute('data-id', idItemCompuesta); // Usar clave compuesta
 
     itemDiv.innerHTML = `
       <div class="item-info">
@@ -796,24 +804,32 @@ function renderAdd() {
       </div>
     `;
 
+    // Evento para eliminar usando la clave compuesta
     itemDiv.querySelector('.remove-btn').addEventListener('click', () => {
-      state.carrito.delete(idItem);
+      state.carrito.delete(idItemCompuesta);
       itemDiv.remove();
     });
 
-    itemDiv.querySelector('.qty-input').addEventListener('input', (e) => {
+    // Eventos para actualizar la cantidad
+    const $qtyInput = itemDiv.querySelector('.qty-input');
+
+    $qtyInput.addEventListener('input', (e) => {
       const v = parseInt(e.target.value, 10);
       const qty = (!isNaN(v) && v > 0) ? v : 1;
-      state.carrito.get(idItem).cantidad = qty;
+      
+      if (state.carrito.has(idItemCompuesta)) {
+        state.carrito.get(idItemCompuesta).cantidad = qty;
+      }
     });
     
-    itemDiv.querySelector('.qty-input').addEventListener('blur', (e) => {
-      // Reestablece visualmente el input si lo dejaron vacío o con letras
-      e.target.value = state.carrito.get(idItem).cantidad;
+    $qtyInput.addEventListener('blur', (e) => {
+      if (state.carrito.has(idItemCompuesta)) {
+        e.target.value = state.carrito.get(idItemCompuesta).cantidad;
+      }
     });
 
     carritoList.appendChild(itemDiv);
-    $selItem.value = '';
+    $selItem.value = ''; // Resetear el selector
   }
 
   async function procesarGuardado() {
@@ -870,22 +886,20 @@ function renderAdd() {
     const $selSubfamilia = getEl('selectorSubfamilia');
 
     // Helper: cuando hay subtipo definido, autoseleccionar familia y bloquear cambio
-    function aplicarAutoFamiliaPorSubfamilia(subfamiliaIdStr) {
-      if (!$selFamilia || !subfamiliaIdStr) return;
+function aplicarAutoFamiliaPorSubfamilia(subfamiliaIdStr) {
+  if (!$selFamilia || !subfamiliaIdStr) return;
 
-      const subfamiliaId = Number(subfamiliaIdStr);
-      if (!Number.isFinite(subfamiliaId)) return;
+  const subfamiliaId = Number(subfamiliaIdStr);
+  if (!Number.isFinite(subfamiliaId)) return;
 
-      // Buscar familiaId que corresponde al subtipo seleccionado dentro del cache de items
-      const match = (state.itemsCache || []).find((it) => Number(it.subfamiliaId) === subfamiliaId);
+  // USAR itemsCacheCompleto EN LUGAR DE itemsCache
+  const match = (state.itemsCacheCompleto || []).find((it) => Number(it.subfamiliaId) === subfamiliaId);
 
-      if (!match || !match.familiaId) return;
+  if (!match || !match.familiaId) return;
 
-      $selFamilia.value = String(match.familiaId);
-
-      // Bloquear para evitar inconsistencia
-      $selFamilia.disabled = true;
-    }
+  $selFamilia.value = String(match.familiaId);
+  $selFamilia.disabled = true;
+}
 
     function desbloquearFamiliaSiAplica() {
       if (!$selFamilia) return;

@@ -872,47 +872,73 @@ async function procesarGuardado() {
   }
 }
 
-  setTimeout(() => {
-    const $selFamilia = getEl('selectorFamilia');
-    const $selSubfamilia = getEl('selectorSubfamilia');
+setTimeout(() => {
+  const $selFamilia = getEl('selectorFamilia');
+  const $selSubfamilia = getEl('selectorSubfamilia');
 
-    // ... (Aquí van tus funciones internas como aplicarAutoFamiliaPorSubfamilia si las tenías) ...
+  // 1. Helper: Cuando se selecciona una subfamilia, busca su familia, la autoselecciona y bloquea el selector
+  function aplicarAutoFamiliaPorSubfamilia(subfamiliaIdStr) {
+    if (!$selFamilia || !subfamiliaIdStr) return;
 
+    const subfamiliaId = Number(subfamiliaIdStr);
+    if (!Number.isFinite(subfamiliaId)) return;
+
+    // Busca en el caché completo qué familia le corresponde a esta subfamilia
+    const match = (state.itemsCacheCompleto || []).find((it) => Number(it.subfamiliaId) === subfamiliaId);
+
+    if (!match || !match.familiaId) return;
+
+    $selFamilia.value = String(match.familiaId);
+    $selFamilia.disabled = true; // Bloquea para evitar inconsistencias
+  }
+
+  // 2. Helper: ¡Aquí está la que faltaba! Simplemente vuelve a habilitar el selector de familias
+  function desbloquearFamiliaSiAplica() {
     if ($selFamilia) {
-      $selFamilia.addEventListener('change', async (e) => {
+      $selFamilia.disabled = false;
+    }
+  }
+
+  // --- ESCUCHADORES DE EVENTOS ---
+
+  if ($selFamilia) {
+    $selFamilia.addEventListener('change', async (e) => {
+      desbloquearFamiliaSiAplica(); // Por si acaso estaba bloqueado
+      if ($selSubfamilia) $selSubfamilia.value = ''; // Limpia la subfamilia al cambiar la familia de forma manual
+      await cargarConFiltros(e.target.value || null, null);
+    });
+  }
+
+  if ($selSubfamilia) {
+    $selSubfamilia.addEventListener('change', async (e) => {
+      const subId = e.target.value || '';
+      
+      if (!subId) {
+        // Si eligen "-- Todas las subfamilias --", liberamos el selector de familia
         desbloquearFamiliaSiAplica();
-        if ($selSubfamilia) $selSubfamilia.value = '';
-        await cargarConFiltros(e.target.value || null, null);
-      });
-    }
+        await cargarConFiltros($selFamilia?.value || null, null);
+        return;
+      }
+      
+      // Si eligen una subfamilia específica, se auto-completa y bloquea la familia
+      aplicarAutoFamiliaPorSubfamilia(subId);
+      await cargarConFiltros($selFamilia?.value || null, subId);
+    });
+  }
 
-    if ($selSubfamilia) {
-      $selSubfamilia.addEventListener('change', async (e) => {
-        const subId = e.target.value || '';
-        if (!subId) {
-          desbloquearFamiliaSiAplica();
-          await cargarConFiltros($selFamilia?.value || null, null);
-          return;
-        }
-        aplicarAutoFamiliaPorSubfamilia(subId);
-        await cargarConFiltros($selFamilia?.value || null, subId);
-      });
-    }
+  // Eventos de botones principales
+  const btnAdd = getEl('btnAddCarrito');
+  if (btnAdd) btnAdd.addEventListener('click', agregarAlCarrito);
 
-    // Eventos de botones principales
-    const btnAdd = getEl('btnAddCarrito');
-    if (btnAdd) btnAdd.addEventListener('click', agregarAlCarrito);
-
-    const btnSubmit = getEl('btnSubmitRecepcion');
-    if (btnSubmit) btnSubmit.addEventListener('click', procesarGuardado);
-    
-    const btnCancel = getEl('btnCancelar');
-    if (btnCancel) {
-      btnCancel.addEventListener('click', () => {
-        if (window.__invexSetScreen) window.__invexSetScreen('materials');
-      });
-    }
-
+  const btnSubmit = getEl('btnSubmitRecepcion');
+  if (btnSubmit) btnSubmit.addEventListener('click', procesarGuardado);
+  
+  const btnCancel = getEl('btnCancelar');
+  if (btnCancel) {
+    btnCancel.addEventListener('click', () => {
+      if (window.__invexSetScreen) window.__invexSetScreen('materials');
+    });
+  }
     // Toggle de Modo Microsoft (Ahora protegido aquí adentro)
     const msSwitch = getEl('ms-switch');
     if (msSwitch) {

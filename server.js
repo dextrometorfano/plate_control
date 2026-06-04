@@ -270,117 +270,82 @@ app.get('/api/recepcion-data', async (req, res) => {
   }
 });
 
-/**
- * POST: Ajustar inventario por modalidad Recepción
- * Inserta guía_recepcion + det_guia_recepcion y suma stock en inventario.
- */
 app.post('/api/ajuste-recepcion', async (req, res) => {
+  const { id_proveedor, id_almacen, observaciones, items } = req.body;
+
+  // Validaciones de seguridad iniciales
+  if (!id_proveedor || !id_almacen || !items || !items.length) {
+    return res.status(400).json({ success: false, message: 'Datos incompletos o carrito vacío.' });
+  }
+
+  let idGuiaCreada = null;
+
   try {
-    const body = req.body || {};
-    const observaciones = body.observaciones || '';
-    const id_proveedor = body.id_proveedor;
-    const id_almacen = body.id_almacen;
-    const items = Array.isArray(body.items) ? body.items : [];
-
-    if (!id_proveedor) {
-      return res.status(400).json({ success: false, message: "Falta id_proveedor" });
-    }
-    if (!id_almacen) {
-      return res.status(400).json({ success: false, message: "Falta id_almacen" });
-    }
-    if (!items.length) {
-      return res.status(400).json({ success: false, message: "No hay items para ajustar" });
-    }
-
-    // Validar cantidades > 0 (det_guia_recepcion.chk_guia_cantidad)
-    const cleanItems = items
-      .map((it) => ({
-        id_item: Number(it.id),
-        cantidad: Number(it.cantidad)
-      }))
-      .filter((it) => Number.isFinite(it.id_item) && Number.isFinite(it.cantidad) && it.cantidad > 0);
-
-    if (!cleanItems.length) {
-      return res.status(400).json({ success: false, message: "Todas las cantidades deben ser > 0" });
-    }
-
-    // Próximo ID de guía
-    const { data: lastGuia, error: errLast } = await supabase
+    // 1. PASO 1: Insertar la cabecera en 'guia_recepcion'
+    // .select('id').single() nos devuelve inmediatamente el ID generado de esa fila
+    const { data: cabecera, error: errorCabecera } = await supabase
       .from('guia_recepcion')
+      .insert([
+        {
+          fecha_recepcion: new Date().toISOString(), // Formato timestamptz para Postgres
+          id_proveedor: parseInt(id_proveedor, 10),
+          id_almacen: parseInt(id_almacen, 10),
+          observaciones: observaciones || null
+        }
+      ])
       .select('id')
-      .order('id', { ascending: false })
-      .limit(1);
-    if (errLast) throw errLast;
+      .single();
 
-    const proximoId = (lastGuia && lastGuia.length > 0) ? (Number(lastGuia[0].id) + 1) : 1;
-
-    // Inserta guía
-    const guiaInsertPayload = {
-      id: proximoId,
-      fecha_recepcion: new Date().toISOString(),
-      id_proveedor: Number(id_proveedor),
-      observaciones
-    };
-
-    const { error: errGuia } = await supabase
-      .from('guia_recepcion')
-      .insert(guiaInsertPayload);
-
-    if (errGuia) throw errGuia;
-
-    // Insert det_guia_recepcion (batch)
-    const detPayload = cleanItems.map((it) => ({
-      id_guia: proximoId,
-      id_item: it.id_item,
-      cantidad: it.cantidad
-    }));
-
-    const { error: errDet } = await supabase
-      .from('det_guia_recepcion')
-      .insert(detPayload);
-
-    if (errDet) throw errDet;
-
-    // Actualiza inventario SUMANDO cantidad por (id_almacen + id_item)
-    for (const it of cleanItems) {
-      const { data: invRow, error: errRow } = await supabase
-        .from('inventario')
-        .select('id, cantidad')
-        .eq('id_almacen', Number(id_almacen))
-        .eq('id_item', it.id_item)
-        .limit(1);
-
-      if (errRow) throw errRow;
-
-      if (!invRow || invRow.length === 0) {
-        const { error: errIns } = await supabase
-          .from('inventario')
-          .insert({
-            id_almacen: Number(id_almacen),
-            id_item: it.id_item,
-            cantidad: it.cantidad
-          });
-
-        if (errIns) throw errIns;
-      } else {
-        const newCantidad = Number(invRow[0].cantidad) + it.cantidad;
-
-        const { error: errUpd } = await supabase
-          .from('inventario')
-          .update({ cantidad: newCantidad })
-          .eq('id', invRow[0].id);
-
-        if (errUpd) throw errUpd;
-      }
+    if (errorCabecera) {
+      throw new Error(`Error al crear la cabecera: ${errorCabecera.message}`);
     }
 
-    res.json({
-      success: true,
-      message: "Inventario ajustado correctamente",
-      id_guia: proximoId
+    idGuiaCreada = cabecera.id; // Guardamos el ID por si necesitamos borrarlo en el catch
+
+    // 2. PASO 2: Preparar el array de detalles para meterlos TODOS de un solo golpe (Bulk Insert)
+    const filasDetalle = items.map(item => {
+      const cantidad = parseInt(item.cantidad, 10);
+      
+      // Validamos el check de cantidad antes de enviarlo a Postgres
+      if (cantidad <= 0) {
+        throw new Error(`La cantidad para el ítem ID ${item.id} debe ser mayor a cero.`);
+      }
+
+      return {
+        id_guia: idGuiaCreada,
+        id_item: parseInt(item.id, 10),
+        cantidad: cantidad
+      };
     });
+
+    // 3. PASO 3: Insertar los detalles en bloque en 'det_guia_recepcion'
+    const { error: errorDetalle } = await supabase
+      .from('det_guia_recepcion')
+      .insert(filasDetalle);
+
+    if (errorDetalle) {
+      throw new Error(`Error al insertar los detalles de la guía: ${errorDetalle.message}`);
+    }
+
+    // Si todo salió bien, respondemos éxito
+    return res.json({ 
+      success: true, 
+      message: `Recepción guardada con éxito en Supabase. Guía N° ${idGuiaCreada}` 
+    });
+
   } catch (error) {
-    console.error("❌ Error en /api/ajuste-recepcion:", error.message || error);
-    res.status(500).json({ success: false, message: error.message || 'Error al ajustar inventario' });
+    console.error('Error procesando la recepción en Supabase:', error);
+    
+    if (idGuiaCreada) {
+      await supabase
+        .from('guia_recepcion')
+        .delete()
+        .eq('id', idGuiaCreada);
+    }
+
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Error interno: ' + error.message 
+    });
   }
 });

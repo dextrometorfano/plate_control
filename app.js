@@ -681,38 +681,38 @@ function renderAdd() {
     });
   }
 
-  // --- ACCIONES API ---
   async function cargarRecepcion() {
-    showLoading();
-    try {
-      const resp = await fetch('/api/recepcion-data');
-      if (!resp.ok) throw new Error('Error al cargar datos de recepción');
-      const data = await resp.json();
+  showLoading();
+  try {
+    const proximoId = (lastGuia && lastGuia.length > 0) ? (Number(lastGuia[0].id) + 1) : 1;
+    const resp = await fetch('/api/recepcion-data');
+    if (!resp.ok) throw new Error('Error al cargar datos de recepción');
+    const data = await resp.json();
 
-      state.proximoId = data.proximoId || 1;
-      const lblId = getEl('lblProximoId');
-      if (lblId) lblId.textContent = state.proximoId;
+    state.proximoId = data.proximoId || 1;
+    const lblId = getEl('lblProximoId');
+    if (lblId) lblId.textContent = state.proximoId;
 
-      state.proveedores = data.proveedores || [];
-      state.almacenes = data.almacenes || [];
-      state.familias = data.familias || [];
-      state.itemsCacheCompleto = data.items || [];
-      state.itemsCache = data.items || [];
-      state.subfamilias = data.subfamilias || [];
+    state.proveedores = data.proveedores || [];
+    state.almacenes = data.almacenes || [];
+    state.familias = data.familias || [];
+    state.itemsCacheCompleto = data.items || [];
+    state.itemsCache = data.items || [];
+    state.subfamilias = data.subfamilias || [];
 
-      fillSelect(getEl('selectorProveedor'), state.proveedores, (x) => x.id, (x) => x.nombre, '-- Seleccione proveedor --');
-      fillSelect(getEl('selectorAlmacen'), state.almacenes, (x) => x.id, (x) => x.nombre, '-- Seleccione almacén --');
-      fillSelect(getEl('selectorFamilia'), state.familias, (x) => x.id, (x) => x.nombre, '-- Todas las familias --');
-      fillSelect(getEl('selectorSubfamilia'), state.subfamilias, (x) => x.id, (x) => x.nombre, '-- Todas las subfamilias --');
+    fillSelect(getEl('selectorProveedor'), state.proveedores, (x) => x.id, (x) => x.nombre, '-- Seleccione proveedor --');
+    fillSelect(getEl('selectorAlmacen'), state.almacenes, (x) => x.id, (x) => x.nombre, '-- Seleccione almacén --');
+    fillSelect(getEl('selectorFamilia'), state.familias, (x) => x.id, (x) => x.nombre, '-- Todas las familias --');
+    fillSelect(getEl('selectorSubfamilia'), state.subfamilias, (x) => x.id, (x) => x.nombre, '-- Todas las subfamilias --');
 
-      llenarItemsDropdown(state.itemsCache);
-    } catch (err) {
-      console.error(err);
-      alert('Error: ' + (err.message || err));
-    } finally {
-      hideLoading();
-    }
+    llenarItemsDropdown(state.itemsCache);
+  } catch (err) {
+    console.error(err);
+    alert('Error: ' + (err.message || err));
+  } finally {
+    hideLoading();
   }
+}
 
 async function cargarConFiltros(familiaId, subfamiliaId) {
   showLoading();
@@ -729,11 +729,11 @@ async function cargarConFiltros(familiaId, subfamiliaId) {
 
     let itemsFiltrados = data.items || [];
 
-    // 👉 SALVAGUARDA frontend: Si el server devolvió todo por error, lo filtramos a la fuerza
+    // 👉 SALVAGUARDA frontend mejorada (evita colisiones con null/undefined)
     if (subfamiliaId) {
-      itemsFiltrados = itemsFiltrados.filter(it => String(it.subfamiliaId) === String(subfamiliaId));
+      itemsFiltrados = itemsFiltrados.filter(it => it.subfamiliaId && String(it.subfamiliaId) === String(subfamiliaId));
     } else if (familiaId) {
-      itemsFiltrados = itemsFiltrados.filter(it => String(it.familiaId) === String(familiaId));
+      itemsFiltrados = itemsFiltrados.filter(it => it.familiaId && String(it.familiaId) === String(familiaId));
     }
 
     state.itemsCache = itemsFiltrados;
@@ -744,7 +744,6 @@ async function cargarConFiltros(familiaId, subfamiliaId) {
       if (familiaId) getEl('selectorSubfamilia').value = '';
     }
     
-    // Ahora el dropdown solo recibirá el set limpio y sanitizado
     llenarItemsDropdown(state.itemsCache);
   } catch (err) {
     console.error(err);
@@ -753,84 +752,79 @@ async function cargarConFiltros(familiaId, subfamiliaId) {
     hideLoading();
   }
 }
+
 function agregarAlCarrito() {
-    const $selItem = getEl('selectorItem');
-    if (!$selItem) return;
-    
-    const opt = $selItem.options[$selItem.selectedIndex];
-    if (!opt || !opt.value) return;
+  const $selItem = getEl('selectorItem');
+  if (!$selItem) return;
+  
+  const opt = $selItem.options[$selItem.selectedIndex];
+  if (!opt || !opt.value) return;
 
-    // 1. Obtener identificadores correctos
-    const idItemCompuesta = String(opt.value); 
-    const idItemSolo = String(opt.getAttribute('data-iditem') || '').trim();
-    const fam = (opt.getAttribute('data-fam') || '').trim();
-    const sub = (opt.getAttribute('data-sub') || '').trim();
+  const idItemCompuesta = String(opt.value); 
+  const idItemSolo = String(opt.getAttribute('data-iditem') || '').trim();
+  const fam = (opt.getAttribute('data-fam') || '').trim();
+  const sub = (opt.getAttribute('data-sub') || '').trim();
 
-    // 2. Procesar nombres para visualización
-    const display = (opt.textContent || '').trim();
-    const nombreItemRemanente = display.startsWith(sub) ? display.slice(sub.length).trim() : display;
-    const nombre = `${sub} ${nombreItemRemanente}`.trim() || display;
+  const display = (opt.textContent || '').trim();
+  const nombreItemRemanente = display.startsWith(sub) ? display.slice(sub.length).trim() : display;
+  const nombre = `${sub} ${nombreItemRemanente}`.trim() || display;
 
-    // 3. Validar duplicados usando la clave compuesta (Item + Almacén)
-    if (state.carrito.has(idItemCompuesta)) {
-      alert('Este item ya está en el carrito. No se permiten duplicados.');
-      return;
-    }
-
-    // 4. Guardar en el estado local
-    state.carrito.set(idItemCompuesta, { 
-      id_item: Number(idItemSolo), // ID limpio que espera el servidor
-      nombre: nombre, 
-      subfamiliaNombre: sub, 
-      cantidad: 1 
-    });
-
-    // 5. Renderizar en el DOM
-    const carritoList = getEl('carritoBody');
-    if (!carritoList) return;
-
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'carrito-item';
-    itemDiv.setAttribute('data-id', idItemCompuesta); // Usar clave compuesta
-
-    itemDiv.innerHTML = `
-      <div class="item-info">
-        <div class="item-nombre">${escapeHtml(nombre)}</div>
-        <div class="item-sub">${escapeHtml(sub || fam)}</div>
-      </div>
-      <div class="item-controls">
-        <input type="number" class="qty-input" value="1" min="1" step="1" />
-        <button class="remove-btn" type="button" aria-label="Eliminar">✕</button>
-      </div>
-    `;
-
-    // Evento para eliminar usando la clave compuesta
-    itemDiv.querySelector('.remove-btn').addEventListener('click', () => {
-      state.carrito.delete(idItemCompuesta);
-      itemDiv.remove();
-    });
-
-    // Eventos para actualizar la cantidad
-    const $qtyInput = itemDiv.querySelector('.qty-input');
-
-    $qtyInput.addEventListener('input', (e) => {
-      const v = parseInt(e.target.value, 10);
-      const qty = (!isNaN(v) && v > 0) ? v : 1;
-      
-      if (state.carrito.has(idItemCompuesta)) {
-        state.carrito.get(idItemCompuesta).cantidad = qty;
-      }
-    });
-    
-    $qtyInput.addEventListener('blur', (e) => {
-      if (state.carrito.has(idItemCompuesta)) {
-        e.target.value = state.carrito.get(idItemCompuesta).cantidad;
-      }
-    });
-
-    carritoList.appendChild(itemDiv);
-    $selItem.value = ''; // Resetear el selector
+  if (state.carrito.has(idItemCompuesta)) {
+    alert('Este item ya está en el carrito. No se permiten duplicados.');
+    return;
   }
+
+  state.carrito.set(idItemCompuesta, { 
+    id_item: Number(idItemSolo), 
+    nombre: nombre, 
+    subfamiliaNombre: sub, 
+    cantidad: 1 
+  });
+
+  const carritoList = getEl('carritoBody');
+  if (!carritoList) return;
+
+  const itemDiv = document.createElement('div');
+  itemDiv.className = 'carrito-item';
+  itemDiv.setAttribute('data-id', idItemCompuesta);
+
+  itemDiv.innerHTML = `
+    <div class="item-info">
+      <div class="item-nombre">${escapeHtml(nombre)}</div>
+      <div class="item-sub">${escapeHtml(sub || fam)}</div>
+    </div>
+    <div class="item-controls">
+      <input type="number" class="qty-input" value="1" min="1" step="1" />
+      <button class="remove-btn" type="button" aria-label="Eliminar">✕</button>
+    </div>
+  `;
+
+  itemDiv.querySelector('.remove-btn').addEventListener('click', () => {
+    state.carrito.delete(idItemCompuesta);
+    itemDiv.remove();
+  });
+
+  const $qtyInput = itemDiv.querySelector('.qty-input');
+
+  $qtyInput.addEventListener('input', (e) => {
+    const v = parseInt(e.target.value, 10);
+    const qty = (!isNaN(v) && v > 0) ? v : 1;
+    
+    if (state.carrito.has(idItemCompuesta)) {
+      state.carrito.get(idItemCompuesta).cantidad = qty;
+    }
+  });
+  
+  $qtyInput.addEventListener('blur', (e) => {
+    if (state.carrito.has(idItemCompuesta)) {
+      // Sincroniza el valor real del estado con el input del DOM al perder el foco
+      e.target.value = state.carrito.get(idItemCompuesta).cantidad;
+    }
+  });
+
+  carritoList.appendChild(itemDiv);
+  $selItem.value = ''; 
+}
 
 async function procesarGuardado() {
   if (state.carrito.size === 0) {
@@ -838,21 +832,17 @@ async function procesarGuardado() {
     return;
   }
 
-  // 1. Obtener los valores directamente del DOM en el momento del click
   const id_proveedor = getEl('selectorProveedor').value;
-  const id_almacen = getEl('selectorAlmacen').value; // <-- Clave para que viaje el almacén
+  const id_almacen = getEl('selectorAlmacen').value; 
   const observaciones = getEl('txtObservaciones').value;
 
-  // 2. Validaciones previas al envío
   if (!id_proveedor) return alert('Seleccione un proveedor');
   if (!id_almacen) return alert('Seleccione un almacén');
 
-  // 3. Preparación del objeto (Tu código)
   const datosParaEnviar = {
-    id_proveedor,  // Pasa el valor del selector proveedor
-    id_almacen,    // Pasa el valor del selector almacén
-    observaciones, // Pasa el texto del textarea
-    // Transforma el Map del carrito en el array plano [{id: X, cantidad: Y}] que el server espera
+    id_proveedor,  
+    id_almacen,    
+    observaciones, 
     items: Array.from(state.carrito.values()).map(x => ({ id: x.id_item, cantidad: x.cantidad }))
   };
 
@@ -862,7 +852,7 @@ async function procesarGuardado() {
     const response = await fetch('/api/ajuste-recepcion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datosParaEnviar) // <-- Aquí se convierte a JSON string final
+      body: JSON.stringify(datosParaEnviar) 
     });
 
     const resultado = await response.json();
@@ -883,94 +873,79 @@ async function procesarGuardado() {
   }
 }
 
-  // --- ASIGNACIÓN DE EVENTOS SEGUROS (Post-Render) ---
-  // Usamos setTimeout para asegurar que el elemento ya se encuentra en el DOM activo
   setTimeout(() => {
     const $selFamilia = getEl('selectorFamilia');
     const $selSubfamilia = getEl('selectorSubfamilia');
 
-    // Helper: cuando hay subtipo definido, autoseleccionar familia y bloquear cambio
-function aplicarAutoFamiliaPorSubfamilia(subfamiliaIdStr) {
-  if (!$selFamilia || !subfamiliaIdStr) return;
+    // ... (Aquí van tus funciones internas como aplicarAutoFamiliaPorSubfamilia si las tenías) ...
 
-  const subfamiliaId = Number(subfamiliaIdStr);
-  if (!Number.isFinite(subfamiliaId)) return;
-
-  // USAR itemsCacheCompleto EN LUGAR DE itemsCache
-  const match = (state.itemsCacheCompleto || []).find((it) => Number(it.subfamiliaId) === subfamiliaId);
-
-  if (!match || !match.familiaId) return;
-
-  $selFamilia.value = String(match.familiaId);
-  $selFamilia.disabled = true;
-}
-
-    function desbloquearFamiliaSiAplica() {
-      if (!$selFamilia) return;
-      $selFamilia.disabled = false;
+    if ($selFamilia) {
+      $selFamilia.addEventListener('change', async (e) => {
+        desbloquearFamiliaSiAplica();
+        if ($selSubfamilia) $selSubfamilia.value = '';
+        await cargarConFiltros(e.target.value || null, null);
+      });
     }
 
-    $selFamilia.addEventListener('change', async (e) => {
-      // Si el usuario cambia familia manualmente, liberamos subtipo
-      desbloquearFamiliaSiAplica();
-      $selSubfamilia.value = '';
-      await cargarConFiltros(e.target.value, null);
-    });
+    if ($selSubfamilia) {
+      $selSubfamilia.addEventListener('change', async (e) => {
+        const subId = e.target.value || '';
+        if (!subId) {
+          desbloquearFamiliaSiAplica();
+          await cargarConFiltros($selFamilia?.value || null, null);
+          return;
+        }
+        aplicarAutoFamiliaPorSubfamilia(subId);
+        await cargarConFiltros($selFamilia?.value || null, subId);
+      });
+    }
 
-    $selSubfamilia.addEventListener('change', async (e) => {
-      const subId = e.target.value || '';
-      const familiaSelId = $selFamilia.value || '';
+    // Eventos de botones principales
+    const btnAdd = getEl('btnAddCarrito');
+    if (btnAdd) btnAdd.addEventListener('click', agregarAlCarrito);
 
-      if (!subId) {
-        // Sin subtipo => familia editable y sin filtros por subtipo
-        desbloquearFamiliaSiAplica();
-        await cargarConFiltros($selFamilia.value || null, null);
-        return;
-      }
-
-      // Caso solicitado: si selecciona SOLO subtipo, autocompletar familia correspondiente
-      // y NO permitir cambio porque "no puede ser otro tipo de familia"
-      aplicarAutoFamiliaPorSubfamilia(subId);
-
-      // Después de auto-seleccionar familia, recargar items filtrados por subtipo
-      const familiaIdFinal = $selFamilia.disabled ? $selFamilia.value : familiaSelId;
-
-      // Asegurar que el filtro por subfamilia realmente se aplique al backend.
-      // Si subId existe, forzamos familiaIdFinal solo como apoyo (pero el filtro principal será subfamiliaId).
-      await cargarConFiltros($selFamilia.value || null, subId);
-    });
-
-    getEl('btnAddCarrito').addEventListener('click', agregarAlCarrito);
-    getEl('btnSubmitRecepcion').addEventListener('click', procesarGuardado);
+    const btnSubmit = getEl('btnSubmitRecepcion');
+    if (btnSubmit) btnSubmit.addEventListener('click', procesarGuardado);
     
-    getEl('btnCancelar').addEventListener('click', () => {
-      if (window.__invexSetScreen) window.__invexSetScreen('materials');
-    });
+    const btnCancel = getEl('btnCancelar');
+    if (btnCancel) {
+      btnCancel.addEventListener('click', () => {
+        if (window.__invexSetScreen) window.__invexSetScreen('materials');
+      });
+    }
 
-    // Toggle de Modo Microsoft
-    getEl('ms-switch').addEventListener('click', function() {
-      const mode = this.getAttribute('data-mode');
-      if (mode === 'recepcion') {
-        this.setAttribute('data-mode', 'retiro');
-        this.setAttribute('aria-checked', 'true');
-        alert('Retiro: lógica no implementada por ahora.');
-        // Revertir automáticamente ya que no está implementado
-        setTimeout(() => {
-          this.setAttribute('data-mode', 'recepcion');
-          this.setAttribute('aria-checked', 'false');
-        }, 300);
-      }
-    });
+    // Toggle de Modo Microsoft (Ahora protegido aquí adentro)
+    const msSwitch = getEl('ms-switch');
+    if (msSwitch) {
+      msSwitch.addEventListener('click', function() {
+        const mode = this.getAttribute('data-mode');
+        if (mode === 'recepcion') {
+          this.setAttribute('data-mode', 'retiro');
+          this.setAttribute('aria-checked', 'true');
+          alert('Retiro: lógica no implementada por ahora.');
+          
+          setTimeout(() => {
+            this.setAttribute('data-mode', 'recepcion');
+            this.setAttribute('aria-checked', 'false');
+          }, 300);
+        }
+      });
+    }
 
-    // Carga inicial de datos
+    // Carga inicial de datos (Una vez que los selectores ya existen)
     cargarRecepcion();
-  }, 0);
+
+  }, 50); // Un solo cierre limpio para todo el bloque diferido
 
   return wrap;
-}
-  window.__invexAddDemo = function () {
+} // Cierre de la función principal donde se genera el 'wrap'
+
+// Definiciones globales externas
+window.__invexAddDemo = function () {
+  if (typeof setScreen === "function") {
     setScreen("materials");
-  };
+  }
+};
 
   function renderInventory() {
     const wrap = document.createElement("div");

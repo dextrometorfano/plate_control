@@ -684,7 +684,6 @@ function renderAdd() {
   async function cargarRecepcion() {
   showLoading();
   try {
-    const proximoId = (lastGuia && lastGuia.length > 0) ? (Number(lastGuia[0].id) + 1) : 1;
     const resp = await fetch('/api/recepcion-data');
     if (!resp.ok) throw new Error('Error al cargar datos de recepción');
     const data = await resp.json();

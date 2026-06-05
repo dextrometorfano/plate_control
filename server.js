@@ -123,12 +123,6 @@ app.get('/api/state', async (req, res) => {
   }
 });
 
-/**
- * GET: datos completos para formulario de Recepción
- * - Calcula próximo ID de guia_recepcion
- * - Devuelve familias, subfamilias (y items)
- * Regla: si no se selecciona familia/subfamilia => items TODOS.
- */
 app.get('/api/recepcion-data', async (req, res) => {
   try {
     const familiaId = req.query.familia_id ? Number(req.query.familia_id) : null;
@@ -267,6 +261,151 @@ app.get('/api/recepcion-data', async (req, res) => {
   } catch (error) {
     console.error("❌ Error en /api/recepcion-data:", error.message || error);
     res.status(500).json({ error: 'Error al cargar datos de recepción' });
+  }
+});
+
+app.get('/api/retiro-data', async (req, res) => {
+  try {
+    const { familia_id, subfamilia_id } = req.query;
+
+    // 1. Obtener el próximo ID aproximado para el vale de retiro (conteo rápido)
+    const { count: totalVales, error: errCount } = await supabase
+      .from('vale_retiro')
+      .select('*', { count: 'exact', head: true });
+    
+    if (errCount) throw errCount;
+    const proximoId = (totalVales || 0) + 1;
+
+    // 2. Traer colaboradores activos (Alineado a tu FK)
+    const { data: colaboradores, error: errColab } = await supabase
+      .from('colaborador')
+      .select('id, nombre')
+      .order('nombre', { ascending: true });
+    
+    if (errColab) throw errColab;
+
+    // 3. Traer almacenes
+    const { data: almacenes, error: errAlmacen } = await supabase
+      .from('almacen')
+      .select('id, nombre')
+      .order('nombre', { ascending: true });
+    
+    if (errAlmacen) throw errAlmacen;
+
+    // 4. Traer familias (Tipos de planchas)
+    const { data: familias, error: errFam } = await supabase
+      .from('familia')
+      .select('id, nombre')
+      .order('nombre', { ascending: true });
+    
+    if (errFam) throw errFam;
+
+    // 5. Traer subfamilias (Subtipos)
+    const { data: subfamilias, error: errSubFam } = await supabase
+      .from('subfamilia')
+      .select('id, nombre')
+      .order('nombre', { ascending: true });
+    
+    if (errSubFam) throw errSubFam;
+
+    // 6. Consultar Items mapeando las propiedades exactas que busca el frontend
+    let queryItems = supabase
+      .from('item')
+      .select(`
+        itemId:id,
+        itemNombre:nombre,
+        familiaId:id_familia,
+        subfamiliaId:id_subfamilia,
+        sugeridoAlmacenId:id_almacen_sugerido
+      `);
+
+    if (subfamilia_id) {
+      queryItems = queryItems.eq('id_subfamilia', subfamilia_id);
+    } else if (familia_id) {
+      queryItems = queryItems.eq('id_familia', familia_id);
+    }
+
+    const { data: items, error: errItems } = await queryItems.order('nombre', { ascending: true });
+    if (errItems) throw errItems;
+
+    // Respuesta idéntica al formato que mapea el frontend
+    return res.status(200).json({
+      success: true,
+      proximoId,
+      colaboradores, 
+      almacenes,
+      familias,
+      subfamilias,
+      items
+    });
+
+  } catch (error) {
+    console.error('Error en /api/retiro-data:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error interno al cargar datos de retiro.'
+    });
+  }
+});
+
+app.post('/api/ajuste-retiro', async (req, res) => {
+  try {
+    const { id_colaborador, id_almacen, observaciones, items } = req.body;
+
+    // Validaciones de seguridad en el servidor
+    if (!id_colaborador) return res.status(400).json({ success: false, message: 'El ID de colaborador es requerido.' });
+    if (!id_almacen) return res.status(400).json({ success: false, message: 'El ID de almacén es requerido.' });
+    if (!items || !items.length) {
+      return res.status(400).json({ success: false, message: 'El carrito no contiene ítems para retirar.' });
+    }
+
+    // 1. Insertar la Cabecera en vale_retiro
+    const { data: cabecera, error: errCabecera } = await supabase
+      .from('vale_retiro')
+      .insert([
+        {
+          fecha_retiro: new Date().toISOString(),
+          id_colaborador: Number(id_colaborador),
+          id_almacen: Number(id_almacen),
+          observaciones: observaciones || null
+        }
+      ])
+      .select('id')
+      .single();
+
+    if (errCabecera) throw errCabecera;
+    const idValeGenerado = cabecera.id;
+
+    // 2. Mapear el carrito enviado por el Front al esquema det_vale_retiro
+    const filasDetalle = items.map(item => ({
+      id_vale: idValeGenerado,       
+      id_item: Number(item.id),       
+      cantidad: Number(item.cantidad) 
+    }));
+
+    // 3. Insertar los detalles en bloque
+    const { error: errDetalle } = await supabase
+      .from('det_vale_retiro')
+      .insert(filasDetalle);
+
+    if (errDetalle) {
+      // Rollback manual si el detalle falla
+      await supabase.from('vale_retiro').delete().eq('id', idValeGenerado);
+      throw errDetalle;
+    }
+
+    // Nota: El trigger tg_ajuste_retiro_inv_after_insert restará el inventario automáticamente en Supabase ahora mismo.
+    return res.status(200).json({
+      success: true,
+      message: `Vale de Retiro N° ${idValeGenerado} registrado con éxito.`
+    });
+
+  } catch (error) {
+    console.error('Error en /api/ajuste-retiro:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error de base de datos al procesar el retiro.'
+    });
   }
 });
 

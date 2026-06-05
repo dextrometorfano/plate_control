@@ -336,178 +336,64 @@ function renderAdd() {
       <style>
         #loading-overlay {
           position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.5);
-          backdrop-filter: blur(5px);
-          z-index: 9999;
-          display: none;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 24px;
-          font-weight: bold;
+          top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px);
+          z-index: 9999; display: none; align-items: center; justify-content: center;
+          color: white; font-size: 24px; font-weight: bold;
         }
         body.loading { overflow: hidden; }
 
-        .ms-switch-wrap{
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          gap:14px;
-          margin-bottom:12px;
-        }
+        .ms-switch-wrap{ display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:12px; }
         .ms-switch{
-          position:relative;
-          width:180px;
-          height:40px;
-          border-radius:999px;
-          padding:4px;
-          border:1px solid var(--border);
-          background: #fff;
-          box-shadow: var(--shadow-sm);
-          overflow:hidden;
-          cursor: pointer;
+          position:relative; width:180px; height:40px; border-radius:999px; padding:4px;
+          border:1px solid var(--border); background: #fff; box-shadow: var(--shadow-sm);
+          overflow:hidden; cursor: pointer;
         }
         .ms-switch .ms-thumb{
-          position:absolute;
-          top:4px;
-          left:4px;
-          width:calc(50% - 4px);
-          height:calc(100% - 8px);
-          border-radius:999px;
-          transition: transform .18s ease;
-          background:#E2EFDA; /* Recepción */
-          border:1px solid rgba(22,163,74,.22);
+          position:absolute; top:4px; left:4px; width:calc(50% - 4px); height:calc(100% - 8px);
+          border-radius:999px; transition: transform .18s ease;
+          background:#E2EFDA; border:1px solid rgba(22,163,74,.22);
         }
         .ms-switch[data-mode="retiro"] .ms-thumb{
           transform: translateX(calc(100% - 4px));
-          background:#FFCDCD; /* Retiro */
-          border-color: rgba(239,68,68,.22);
+          background:#FFCDCD; border-color: rgba(239,68,68,.22);
         }
         .ms-labels{
-          width:100%;
-          position:relative;
-          z-index:2;
-          display:flex;
-          height:100%;
-          align-items:center;
-          justify-content:space-between;
-          padding:0 12px;
-          font-weight:900;
-          font-size:12.5px;
-          color: rgba(17,24,39,.65);
-          pointer-events:none;
+          width:100%; position:relative; z-index:2; display:flex; height:100%;
+          align-items:center; justify-content:space-between; padding:0 12px;
+          font-weight:900; font-size:12.5px; color: rgba(17,24,39,.65); pointer-events:none;
         }
         .ms-labels .left{ color:#15803d; }
         .ms-labels .right{ color:#b91c1c; }
 
-        .section-title-soft{
-          font-size:14.5px;
-          font-weight:850;
-          margin:0 0 10px;
-          color: rgba(17,24,39,.92);
-        }
+        .section-title-soft{ font-size:14.5px; font-weight:850; margin:0 0 10px; color: rgba(17,24,39,.92); }
+        .grid-stack{ display:grid; grid-template-columns: 1fr; gap:10px; }
+        
+        .select{ width:100%; border:1px solid var(--border); border-radius:14px; padding:11px 12px; font-size:14px; background:#fff; outline:none; }
+        .select:focus{ border-color: rgba(14,165,233,.55); box-shadow: 0 0 0 3px rgba(14,165,233,.15); }
 
-        .grid-stack{
-          display:grid;
-          grid-template-columns: 1fr;
-          gap:10px;
-        }
-
-        .select{
-          width:100%;
-          border:1px solid var(--border);
-          border-radius:14px;
-          padding:11px 12px;
-          font-size:14px;
-          background:#fff;
-          outline:none;
-        }
-        .select:focus{
-          border-color: rgba(14,165,233,.55);
-          box-shadow: 0 0 0 3px rgba(14,165,233,.15);
-        }
-
-        .carrito-list{
-          display:flex;
-          flex-direction:column;
-          gap:10px;
-          margin-top:10px;
-        }
+        .carrito-list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; }
         .carrito-item{
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:12px;
-          padding:12px;
-          background:var(--card-2);
-          border-radius:var(--radius);
-          border:1px solid var(--border);
+          display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px;
+          background:var(--card-2); border-radius:var(--radius); border:1px solid var(--border);
         }
         .carrito-item .item-info{ min-width:0; flex: 1; }
-        .carrito-item .item-nombre{
-          font-weight:900;
-          font-size:13.5px;
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis;
-        }
-        .carrito-item .item-sub{
-          margin-top:2px;
-          font-size:12px;
-          color:var(--muted);
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis;
-        }
+        .carrito-item .item-nombre{ font-weight:900; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .carrito-item .item-sub{ margin-top:2px; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .carrito-item .item-controls{ display:flex; align-items:center; gap:10px; }
 
-        .qty-input{
-          width:92px;
-          border:1px solid var(--border);
-          border-radius:14px;
-          padding:9px 10px;
-          font-size:14px;
-          background:#fff;
-          outline:none;
-        }
-        .qty-input:focus{
-          border-color: rgba(14,165,233,.55);
-          box-shadow: 0 0 0 3px rgba(14,165,233,.15);
-        }
+        .qty-input{ width:92px; border:1px solid var(--border); border-radius:14px; padding:9px 10px; font-size:14px; background:#fff; outline:none; }
+        .qty-input:focus{ border-color: rgba(14,165,233,.55); box-shadow: 0 0 0 3px rgba(14,165,233,.15); }
 
-        .remove-btn{
-          border:0;
-          background:transparent;
-          color: rgba(17,24,39,.45);
-          cursor:pointer;
-          font-weight:900;
-          font-size:14px;
-          padding:0 4px;
-        }
-
+        .remove-btn{ border:0; background:transparent; color: rgba(17,24,39,.45); cursor:pointer; font-weight:900; font-size:14px; padding:0 4px; }
         .add-btn{
-          border:0;
-          background: rgba(14,165,233,.14);
-          color: #0284c7;
-          padding:10px 12px;
-          border-radius:14px;
-          font-weight:900;
-          cursor:pointer;
-          border:1px solid rgba(14,165,233,.22);
-          height:44px;
+          border:0; background: rgba(14,165,233,.14); color: #0284c7; padding:10px 12px;
+          border-radius:14px; font-weight:900; cursor:pointer; border:1px solid rgba(14,165,233,.22); height:44px;
         }
         .add-btn:disabled{ opacity:.6; cursor:not-allowed; }
       </style>
 
-      <h3 class="section-title">Ajuste de Inventario</h3>
-      <p class="subtle small" style="margin-top:-4px; margin-bottom:12px;">
-        Implementación completa: <b>Recepción</b>.
-      </p>
-
+      <h3 class="section-title" id="txtMainTitle">Ajuste de Inventario</h3>
       <div class="ms-switch-wrap">
         <div class="ms-switch" id="ms-switch" data-mode="recepcion" role="switch" aria-checked="false" tabindex="0">
           <div class="ms-thumb" id="ms-thumb"></div>
@@ -520,14 +406,14 @@ function renderAdd() {
 
       <div class="section" style="margin-top:2px;">
         <label style="font-weight:900; font-size:12.5px; color:rgba(17,24,39,.7); display:block;">
-          ID de Recepción
+          <span id="lblIdDinamico">ID de Recepción</span>
           <div style="margin-top:6px; font-weight:950; font-size:16px;" id="lblProximoId">—</div>
         </label>
       </div>
 
       <div class="grid-stack" style="margin-top:12px;">
         <label style="font-weight:900; font-size:12.5px; color:rgba(17,24,39,.7);">
-          Proveedor
+          <span id="lblEntidadDinamica">Proveedor</span>
           <select id="selectorProveedor" class="select"><option value="">Cargando…</option></select>
         </label>
 
@@ -581,7 +467,7 @@ function renderAdd() {
         <button class="btn btn-ghost" type="button" id="btnCancelar">
           Cancelar
         </button>
-        <button class="btn btn-primary" type="button" id="btnSubmitRecepcion" style="background:#E2EFDA; color:#15803d; border:1px solid rgba(22,163,74,.22); font-weight:bold; padding:10px 16px; border-radius:14px; cursor:pointer;">
+        <button class="btn btn-primary" type="button" id="btnSubmitRecepcion" style="background:#E2EFDA; color:#15803d; border:1px solid rgba(22,163,74,.22); font-weight:bold; padding:10px 16px; border-radius:14px; cursor:pointer; transition: all 0.2s ease;">
           Ajustar inventario
         </button>
       </div>
@@ -590,18 +476,19 @@ function renderAdd() {
     <div id="loading-overlay">Cargando...</div>
   `;
 
-  // --- ÁMBITO DE ESTADO PRIVADO (Encapsulado) ---
+  // --- ÁMBITO DE ESTADO PRIVADO ---
   const state = {
+    modoActual: 'recepcion', 
     proximoId: 1,
-    proveedores: [],
+    proveedores: [], // Aquí mapearemos colaboradores si cambia a retiro
     almacenes: [],
     familias: [],
     subfamilias: [],
+    itemsCacheCompleto: [],
     itemsCache: [],
-    carrito: new Map() // key: String(idItem) -> { id_item: Number, nombre, subfamiliaNombre, cantidad }
+    carrito: new Map()
   };
 
-  // --- ELEMENTOS DEL DOM ---
   const getEl = (id) => wrap.querySelector(`#${id}`);
 
   function showLoading() {
@@ -621,12 +508,7 @@ function renderAdd() {
   }
 
   function escapeHtml(str) {
-    return String(str ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
+    return String(str ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
   }
 
   function fillSelect($select, list, getValue, getLabel, emptyLabel) {
@@ -634,14 +516,12 @@ function renderAdd() {
     $select.innerHTML = '';
     if (emptyLabel !== undefined) {
       const opt0 = document.createElement('option');
-      opt0.value = '';
-      opt0.textContent = emptyLabel;
+      opt0.value = ''; opt0.textContent = emptyLabel;
       $select.appendChild(opt0);
     }
     (list || []).forEach((x) => {
       const opt = document.createElement('option');
-      opt.value = getValue(x);
-      opt.textContent = getLabel(x);
+      opt.value = getValue(x); opt.textContent = getLabel(x);
       $select.appendChild(opt);
     });
   }
@@ -652,25 +532,18 @@ function renderAdd() {
     $selItem.innerHTML = '';
 
     const opt0 = document.createElement('option');
-    opt0.value = '';
-    opt0.textContent = '-- Seleccione un item --';
+    opt0.value = ''; opt0.textContent = '-- Seleccione un item --';
     $selItem.appendChild(opt0);
 
     (items || []).forEach((it) => {
       const opt = document.createElement('option');
-
-      // IMPORTANTE:
-      // El server ahora devuelve items distinguiendo por (id_item, id_almacen).
-      // La UI debe usar una clave compuesta para que el filtro no "mezcle" registros.
       const almId = it.sugeridoAlmacenId ?? null;
       const idItem = it.itemId;
       opt.value = `${idItem}|${almId ?? ''}`;
 
-      // Mostrar subtipo al inicio del nombre del item
       const disp = `${it.subfamiliaNombre || ''} ${it.itemNombre || ''}`.trim();
       opt.textContent = disp;
 
-      // Atributos para que el carrito use datos correctos
       opt.setAttribute('data-sub', it.subfamiliaNombre || '');
       opt.setAttribute('data-fam', it.familiaNombre || '');
       opt.setAttribute('data-subid', it.subfamiliaId ?? '');
@@ -682,290 +555,316 @@ function renderAdd() {
   }
 
   async function cargarRecepcion() {
-  showLoading();
-  try {
-    const resp = await fetch('/api/recepcion-data');
-    if (!resp.ok) throw new Error('Error al cargar datos de recepción');
-    const data = await resp.json();
+    showLoading();
+    try {
+      const endpoint = state.modoActual === 'recepcion' ? '/api/recepcion-data' : '/api/retiro-data';
+      
+      const resp = await fetch(endpoint);
+      if (!resp.ok) throw new Error('Error al cargar datos');
+      const data = await resp.json();
 
-    state.proximoId = data.proximoId || 1;
-    const lblId = getEl('lblProximoId');
-    if (lblId) lblId.textContent = state.proximoId;
+      state.proximoId = data.proximoId || 1;
+      const lblId = getEl('lblProximoId');
+      if (lblId) lblId.textContent = state.proximoId;
 
-    state.proveedores = data.proveedores || [];
-    state.almacenes = data.almacenes || [];
-    state.familias = data.familias || [];
-    state.itemsCacheCompleto = data.items || [];
-    state.itemsCache = data.items || [];
-    state.subfamilias = data.subfamilias || [];
-
-    fillSelect(getEl('selectorProveedor'), state.proveedores, (x) => x.id, (x) => x.nombre, '-- Seleccione proveedor --');
-    fillSelect(getEl('selectorAlmacen'), state.almacenes, (x) => x.id, (x) => x.nombre, '-- Seleccione almacén --');
-    fillSelect(getEl('selectorFamilia'), state.familias, (x) => x.id, (x) => x.nombre, '-- Todas las familias --');
-    fillSelect(getEl('selectorSubfamilia'), state.subfamilias, (x) => x.id, (x) => x.nombre, '-- Todas las subfamilias --');
-
-    llenarItemsDropdown(state.itemsCache);
-  } catch (err) {
-    console.error(err);
-    alert('Error: ' + (err.message || err));
-  } finally {
-    hideLoading();
-  }
-}
-
-async function cargarConFiltros(familiaId, subfamiliaId) {
-  showLoading();
-  try {
-    let url = '/api/recepcion-data';
-    const qs = [];
-    if (familiaId) qs.push('familia_id=' + encodeURIComponent(familiaId));
-    if (subfamiliaId) qs.push('subfamilia_id=' + encodeURIComponent(subfamiliaId));
-    if (qs.length) url += '?' + qs.join('&');
-
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error('Error al cargar filtros');
-    const data = await resp.json();
-
-    let itemsFiltrados = data.items || [];
-
-    // 👉 SALVAGUARDA frontend mejorada (evita colisiones con null/undefined)
-    if (subfamiliaId) {
-      itemsFiltrados = itemsFiltrados.filter(it => it.subfamiliaId && String(it.subfamiliaId) === String(subfamiliaId));
-    } else if (familiaId) {
-      itemsFiltrados = itemsFiltrados.filter(it => it.familiaId && String(it.familiaId) === String(familiaId));
-    }
-
-    state.itemsCache = itemsFiltrados;
-    
-    if (!subfamiliaId) {
+      // El server enviará 'proveedores' o 'colaboradores' según el endpoint
+      state.proveedores = data.proveedores || data.colaboradores || [];
+      state.almacenes = data.almacenes || [];
+      state.familias = data.familias || [];
+      state.itemsCacheCompleto = data.items || [];
+      state.itemsCache = data.items || [];
       state.subfamilias = data.subfamilias || [];
+
+      const labelEntidad = state.modoActual === 'recepcion' ? '-- Seleccione proveedor --' : '-- Seleccione colaborador --';
+      fillSelect(getEl('selectorProveedor'), state.proveedores, (x) => x.id, (x) => x.nombre, labelEntidad);
+      fillSelect(getEl('selectorAlmacen'), state.almacenes, (x) => x.id, (x) => x.nombre, '-- Seleccione almacén --');
+      fillSelect(getEl('selectorFamilia'), state.familias, (x) => x.id, (x) => x.nombre, '-- Todas las familias --');
       fillSelect(getEl('selectorSubfamilia'), state.subfamilias, (x) => x.id, (x) => x.nombre, '-- Todas las subfamilias --');
-      if (familiaId) getEl('selectorSubfamilia').value = '';
+
+      llenarItemsDropdown(state.itemsCache);
+    } catch (err) {
+      console.error(err);
+      alert('Error: ' + (err.message || err));
+    } finally {
+      hideLoading();
     }
+  }
+
+  async function cargarConFiltros(familiaId, subfamiliaId) {
+    showLoading();
+    try {
+      const baseEndpoint = state.modoActual === 'recepcion' ? '/api/recepcion-data' : '/api/retiro-data';
+      let url = baseEndpoint;
+      const qs = [];
+      if (familiaId) qs.push('familia_id=' + encodeURIComponent(familiaId));
+      if (subfamiliaId) qs.push('subfamilia_id=' + encodeURIComponent(subfamiliaId));
+      if (qs.length) url += '?' + qs.join('&');
+
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Error al cargar filtros');
+      const data = await resp.json();
+
+      let itemsFiltrados = data.items || [];
+
+      if (subfamiliaId) {
+        itemsFiltrados = itemsFiltrados.filter(it => it.subfamiliaId && String(it.subfamiliaId) === String(subfamiliaId));
+      } else if (familiaId) {
+        itemsFiltrados = itemsFiltrados.filter(it => it.familiaId && String(it.familiaId) === String(familiaId));
+      }
+
+      state.itemsCache = itemsFiltrados;
+      
+      if (!subfamiliaId) {
+        state.subfamilias = data.subfamilias || [];
+        fillSelect(getEl('selectorSubfamilia'), state.subfamilias, (x) => x.id, (x) => x.nombre, '-- Todas las subfamilias --');
+        if (familiaId) getEl('selectorSubfamilia').value = '';
+      }
+      
+      llenarItemsDropdown(state.itemsCache);
+    } catch (err) {
+      console.error(err);
+      alert('Error: ' + (err.message || err));
+    } finally {
+      hideLoading();
+    }
+  }
+
+  function agregarAlCarrito() {
+    const $selItem = getEl('selectorItem');
+    if (!$selItem) return;
     
-    llenarItemsDropdown(state.itemsCache);
-  } catch (err) {
-    console.error(err);
-    alert('Error: ' + (err.message || err));
-  } finally {
-    hideLoading();
-  }
-}
+    const opt = $selItem.options[$selItem.selectedIndex];
+    if (!opt || !opt.value) return;
 
-function agregarAlCarrito() {
-  const $selItem = getEl('selectorItem');
-  if (!$selItem) return;
-  
-  const opt = $selItem.options[$selItem.selectedIndex];
-  if (!opt || !opt.value) return;
+    const idItemCompuesta = String(opt.value); 
+    const idItemSolo = String(opt.getAttribute('data-iditem') || '').trim();
+    const fam = (opt.getAttribute('data-fam') || '').trim();
+    const sub = (opt.getAttribute('data-sub') || '').trim();
 
-  const idItemCompuesta = String(opt.value); 
-  const idItemSolo = String(opt.getAttribute('data-iditem') || '').trim();
-  const fam = (opt.getAttribute('data-fam') || '').trim();
-  const sub = (opt.getAttribute('data-sub') || '').trim();
+    const display = (opt.textContent || '').trim();
+    const nombreItemRemanente = display.startsWith(sub) ? display.slice(sub.length).trim() : display;
+    const nombre = `${sub} ${nombreItemRemanente}`.trim() || display;
 
-  const display = (opt.textContent || '').trim();
-  const nombreItemRemanente = display.startsWith(sub) ? display.slice(sub.length).trim() : display;
-  const nombre = `${sub} ${nombreItemRemanente}`.trim() || display;
-
-  if (state.carrito.has(idItemCompuesta)) {
-    alert('Este item ya está en el carrito. No se permiten duplicados.');
-    return;
-  }
-
-  state.carrito.set(idItemCompuesta, { 
-    id_item: Number(idItemSolo), 
-    nombre: nombre, 
-    subfamiliaNombre: sub, 
-    cantidad: 1 
-  });
-
-  const carritoList = getEl('carritoBody');
-  if (!carritoList) return;
-
-  const itemDiv = document.createElement('div');
-  itemDiv.className = 'carrito-item';
-  itemDiv.setAttribute('data-id', idItemCompuesta);
-
-  itemDiv.innerHTML = `
-    <div class="item-info">
-      <div class="item-nombre">${escapeHtml(nombre)}</div>
-      <div class="item-sub">${escapeHtml(sub || fam)}</div>
-    </div>
-    <div class="item-controls">
-      <input type="number" class="qty-input" value="1" min="1" step="1" />
-      <button class="remove-btn" type="button" aria-label="Eliminar">✕</button>
-    </div>
-  `;
-
-  itemDiv.querySelector('.remove-btn').addEventListener('click', () => {
-    state.carrito.delete(idItemCompuesta);
-    itemDiv.remove();
-  });
-
-  const $qtyInput = itemDiv.querySelector('.qty-input');
-
-  $qtyInput.addEventListener('input', (e) => {
-    const v = parseInt(e.target.value, 10);
-    const qty = (!isNaN(v) && v > 0) ? v : 1;
-    
     if (state.carrito.has(idItemCompuesta)) {
-      state.carrito.get(idItemCompuesta).cantidad = qty;
+      alert('Este item ya está en el carrito. No se permiten duplicados.');
+      return;
     }
-  });
-  
-  $qtyInput.addEventListener('blur', (e) => {
-    if (state.carrito.has(idItemCompuesta)) {
-      // Sincroniza el valor real del estado con el input del DOM al perder el foco
-      e.target.value = state.carrito.get(idItemCompuesta).cantidad;
-    }
-  });
 
-  carritoList.appendChild(itemDiv);
-  $selItem.value = ''; 
-}
-
-async function procesarGuardado() {
-  if (state.carrito.size === 0) {
-    alert('El carrito está vacío');
-    return;
-  }
-
-  const id_proveedor = getEl('selectorProveedor').value;
-  const id_almacen = getEl('selectorAlmacen').value; 
-  const observaciones = getEl('txtObservaciones').value;
-
-  if (!id_proveedor) return alert('Seleccione un proveedor');
-  if (!id_almacen) return alert('Seleccione un almacén');
-
-  const datosParaEnviar = {
-    id_proveedor,  
-    id_almacen,    
-    observaciones, 
-    items: Array.from(state.carrito.values()).map(x => ({ id: x.id_item, cantidad: x.cantidad }))
-  };
-
-  showLoading();
-
-  try {
-    const response = await fetch('/api/ajuste-recepcion', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datosParaEnviar) 
+    state.carrito.set(idItemCompuesta, { 
+      id_item: Number(idItemSolo), 
+      nombre: nombre, 
+      subfamiliaNombre: sub, 
+      cantidad: 1 
     });
 
-    const resultado = await response.json();
-    if (resultado && resultado.success) {
-      alert(resultado.message || 'Ajuste procesado con éxito');
-      if (window.__invexSetScreen) {
-        window.__invexSetScreen('materials');
-      } else {
-        location.href = '/';
+    const carritoList = getEl('carritoBody');
+    if (!carritoList) return;
+
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'carrito-item';
+    itemDiv.setAttribute('data-id', idItemCompuesta);
+
+    itemDiv.innerHTML = `
+      <div class="item-info">
+        <div class="item-nombre">${escapeHtml(nombre)}</div>
+        <div class="item-sub">${escapeHtml(sub || fam)}</div>
+      </div>
+      <div class="item-controls">
+        <input type="number" class="qty-input" value="1" min="1" step="1" />
+        <button class="remove-btn" type="button" aria-label="Eliminar">✕</button>
+      </div>
+    `;
+
+    itemDiv.querySelector('.remove-btn').addEventListener('click', () => {
+      state.carrito.delete(idItemCompuesta);
+      itemDiv.remove();
+    });
+
+    const $qtyInput = itemDiv.querySelector('.qty-input');
+
+    $qtyInput.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      const qty = (!isNaN(v) && v > 0) ? v : 1;
+      if (state.carrito.has(idItemCompuesta)) {
+        state.carrito.get(idItemCompuesta).cantidad = qty;
       }
+    });
+    
+    $qtyInput.addEventListener('blur', (e) => {
+      if (state.carrito.has(idItemCompuesta)) {
+        e.target.value = state.carrito.get(idItemCompuesta).cantidad;
+      }
+    });
+
+    carritoList.appendChild(itemDiv);
+    $selItem.value = ''; 
+  }
+
+  async function procesarGuardado() {
+    if (state.carrito.size === 0) {
+      alert('El carrito está vacío');
+      return;
+    }
+
+    const entidadId = getEl('selectorProveedor').value; // id_proveedor o id_colaborador
+    const id_almacen = getEl('selectorAlmacen').value; 
+    const observaciones = getEl('txtObservaciones').value;
+
+    if (!entidadId) {
+      return alert(state.modoActual === 'recepcion' ? 'Seleccione un proveedor' : 'Seleccione un colaborador');
+    }
+    if (!id_almacen) return alert('Seleccione un almacén');
+
+    // Mapeamos dinámicamente la llave del JSON saliente según el schema correspondiente
+    const datosParaEnviar = {
+      id_almacen,    
+      observaciones, 
+      items: Array.from(state.carrito.values()).map(x => ({ id: x.id_item, cantidad: x.cantidad }))
+    };
+
+    if (state.modoActual === 'recepcion') {
+      datosParaEnviar.id_proveedor = entidadId;
     } else {
-      alert('Error: ' + (resultado?.message || 'No se pudo ajustar'));
+      datosParaEnviar.id_colaborador = entidadId; // 👈 Clave alineada a tu schema public.vale_retiro
     }
-  } catch (error) {
-    alert('Error de conexión: ' + error.message);
-  } finally {
-    hideLoading();
-  }
-}
 
-setTimeout(() => {
-  const $selFamilia = getEl('selectorFamilia');
-  const $selSubfamilia = getEl('selectorSubfamilia');
+    showLoading();
 
-  // 1. Helper: Cuando se selecciona una subfamilia, busca su familia, la autoselecciona y bloquea el selector
-  function aplicarAutoFamiliaPorSubfamilia(subfamiliaIdStr) {
-    if (!$selFamilia || !subfamiliaIdStr) return;
-
-    const subfamiliaId = Number(subfamiliaIdStr);
-    if (!Number.isFinite(subfamiliaId)) return;
-
-    // Busca en el caché completo qué familia le corresponde a esta subfamilia
-    const match = (state.itemsCacheCompleto || []).find((it) => Number(it.subfamiliaId) === subfamiliaId);
-
-    if (!match || !match.familiaId) return;
-
-    $selFamilia.value = String(match.familiaId);
-    $selFamilia.disabled = true; // Bloquea para evitar inconsistencias
-  }
-
-  // 2. Helper: ¡Aquí está la que faltaba! Simplemente vuelve a habilitar el selector de familias
-  function desbloquearFamiliaSiAplica() {
-    if ($selFamilia) {
-      $selFamilia.disabled = false;
-    }
-  }
-
-  // --- ESCUCHADORES DE EVENTOS ---
-
-  if ($selFamilia) {
-    $selFamilia.addEventListener('change', async (e) => {
-      desbloquearFamiliaSiAplica(); // Por si acaso estaba bloqueado
-      if ($selSubfamilia) $selSubfamilia.value = ''; // Limpia la subfamilia al cambiar la familia de forma manual
-      await cargarConFiltros(e.target.value || null, null);
-    });
-  }
-
-  if ($selSubfamilia) {
-    $selSubfamilia.addEventListener('change', async (e) => {
-      const subId = e.target.value || '';
+    try {
+      const targetUrl = state.modoActual === 'recepcion' ? '/api/ajuste-recepcion' : '/api/ajuste-retiro';
       
-      if (!subId) {
-        // Si eligen "-- Todas las subfamilias --", liberamos el selector de familia
-        desbloquearFamiliaSiAplica();
-        await cargarConFiltros($selFamilia?.value || null, null);
-        return;
+      const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datosParaEnviar) 
+      });
+
+      const resultado = await response.json();
+      if (resultado && resultado.success) {
+        alert(resultado.message || 'Ajuste procesado con éxito');
+        if (window.__invexSetScreen) {
+          window.__invexSetScreen('materials');
+        } else {
+          location.href = '/';
+        }
+      } else {
+        alert('Error: ' + (resultado?.message || 'No se pudo ajustar'));
       }
-      
-      // Si eligen una subfamilia específica, se auto-completa y bloquea la familia
-      aplicarAutoFamiliaPorSubfamilia(subId);
-      await cargarConFiltros($selFamilia?.value || null, subId);
-    });
+    } catch (error) {
+      alert('Error de conexión: ' + error.message);
+    } finally {
+      hideLoading();
+    }
   }
 
-  // Eventos de botones principales
-  const btnAdd = getEl('btnAddCarrito');
-  if (btnAdd) btnAdd.addEventListener('click', agregarAlCarrito);
+  // --- ASIGNACIÓN DE EVENTOS SEGUROS ---
+  setTimeout(() => {
+    const $selFamilia = getEl('selectorFamilia');
+    const $selSubfamilia = getEl('selectorSubfamilia');
+    const $btnSubmit = getEl('btnSubmitRecepcion'); 
+    const $txtMainTitle = getEl('txtMainTitle');
+    const $lblIdDinamico = getEl('lblIdDinamico');
+    const $lblEntidadDinamica = getEl('lblEntidadDinamica');
+    const $carritoBody = getEl('carritoBody');
 
-  const btnSubmit = getEl('btnSubmitRecepcion');
-  if (btnSubmit) btnSubmit.addEventListener('click', procesarGuardado);
-  
-  const btnCancel = getEl('btnCancelar');
-  if (btnCancel) {
-    btnCancel.addEventListener('click', () => {
-      if (window.__invexSetScreen) window.__invexSetScreen('materials');
-    });
-  }
-    // Toggle de Modo Microsoft (Ahora protegido aquí adentro)
+    function aplicarAutoFamiliaPorSubfamilia(subfamiliaIdStr) {
+      if (!$selFamilia || !subfamiliaIdStr) return;
+      const subfamiliaId = Number(subfamiliaIdStr);
+      if (!Number.isFinite(subfamiliaId)) return;
+
+      const match = (state.itemsCacheCompleto || []).find((it) => Number(it.subfamiliaId) === subfamiliaId);
+      if (!match || !match.familiaId) return;
+
+      $selFamilia.value = String(match.familiaId);
+      $selFamilia.disabled = true; 
+    }
+
+    function desbloquearFamiliaSiAplica() {
+      if ($selFamilia) $selFamilia.disabled = false;
+    }
+
+    if ($selFamilia) {
+      $selFamilia.addEventListener('change', async (e) => {
+        desbloquearFamiliaSiAplica();
+        if ($selSubfamilia) $selSubfamilia.value = ''; 
+        await cargarConFiltros(e.target.value || null, null);
+      });
+    }
+
+    if ($selSubfamilia) {
+      $selSubfamilia.addEventListener('change', async (e) => {
+        const subId = e.target.value || '';
+        if (!subId) {
+          desbloquearFamiliaSiAplica();
+          await cargarConFiltros($selFamilia?.value || null, null);
+          return;
+        }
+        aplicarAutoFamiliaPorSubfamilia(subId);
+        await cargarConFiltros($selFamilia?.value || null, subId);
+      });
+    }
+
+    const btnAdd = getEl('btnAddCarrito');
+    if (btnAdd) btnAdd.addEventListener('click', agregarAlCarrito);
+
+    if ($btnSubmit) $btnSubmit.addEventListener('click', procesarGuardado); 
+    
+    const btnCancel = getEl('btnCancelar');
+    if (btnCancel) {
+      btnCancel.addEventListener('click', () => {
+        if (window.__invexSetScreen) window.__invexSetScreen('materials');
+      });
+    }
+
+    // --- INTERRUPTOR DE MODO REAL (Soportando tus Schemas) ---
     const msSwitch = getEl('ms-switch');
     if (msSwitch) {
       msSwitch.addEventListener('click', function() {
         const mode = this.getAttribute('data-mode');
+        
+        state.carrito.clear();
+        if ($carritoBody) $carritoBody.innerHTML = '';
+        desbloquearFamiliaSiAplica();
+
         if (mode === 'recepcion') {
           this.setAttribute('data-mode', 'retiro');
           this.setAttribute('aria-checked', 'true');
-          alert('Retiro: lógica no implementada por ahora.');
-          
-          setTimeout(() => {
-            this.setAttribute('data-mode', 'recepcion');
-            this.setAttribute('aria-checked', 'false');
-          }, 300);
+          state.modoActual = 'retiro';
+
+          if ($txtMainTitle) $txtMainTitle.textContent = 'Ajuste de Inventario (Retiro)';
+          if ($lblIdDinamico) $lblIdDinamico.textContent = 'ID de Vale Retiro';
+          if ($lblEntidadDinamica) $lblEntidadDinamica.textContent = 'Colaborador';
+          if ($btnSubmit) {
+            $btnSubmit.style.background = '#FFCDCD';
+            $btnSubmit.style.color = '#b91c1c';
+            $btnSubmit.style.borderColor = 'rgba(239,68,68,.22)';
+          }
+        } else {
+          this.setAttribute('data-mode', 'recepcion');
+          this.setAttribute('aria-checked', 'false');
+          state.modoActual = 'recepcion';
+
+          if ($txtMainTitle) $txtMainTitle.textContent = 'Ajuste de Inventario (Recepción)';
+          if ($lblIdDinamico) $lblIdDinamico.textContent = 'ID de Recepción';
+          if ($lblEntidadDinamica) $lblEntidadDinamica.textContent = 'Proveedor';
+          if ($btnSubmit) {
+            $btnSubmit.style.background = '#E2EFDA';
+            $btnSubmit.style.color = '#15803d';
+            $btnSubmit.style.borderColor = 'rgba(22,163,74,.22)';
+          }
         }
+
+        cargarRecepcion();
       });
     }
 
-    // Carga inicial de datos (Una vez que los selectores ya existen)
     cargarRecepcion();
 
-  }, 50); // Un solo cierre limpio para todo el bloque diferido
+  }, 50);
 
   return wrap;
-} // Cierre de la función principal donde se genera el 'wrap'
-
-// Definiciones globales externas
+}
+  // Definiciones globales externas
 window.__invexAddDemo = function () {
   if (typeof setScreen === "function") {
     setScreen("materials");

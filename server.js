@@ -258,11 +258,14 @@ app.get('/api/recepcion-data', async (req, res) => {
       almacenes: almacenes || [],
       items
     });
-  } catch (error) {
-    console.error("❌ Error en /api/recepcion-data:", error.message || error);
-    res.status(500).json({ error: 'Error al cargar datos de recepción' });
-  }
-});
+} catch (error) {
+  console.error('Error en /api/retiro-data:', error);
+  return res.status(500).json({
+    success: false,
+    message: error.message || 'Error interno',
+    detallesDelError: error // <--- Esto nos va a decir la verdad
+  });
+}
 
 app.get('/api/retiro-data', async (req, res) => {
   try {
@@ -487,4 +490,4 @@ app.post('/api/ajuste-recepcion', async (req, res) => {
       message: 'Error interno: ' + error.message 
     });
   }
-});
+})});

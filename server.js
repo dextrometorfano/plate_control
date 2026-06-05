@@ -123,6 +123,12 @@ app.get('/api/state', async (req, res) => {
   }
 });
 
+/**
+ * GET: datos completos para formulario de Recepción
+ * - Calcula próximo ID de guia_recepcion
+ * - Devuelve familias, subfamilias (y items)
+ * Regla: si no se selecciona familia/subfamilia => items TODOS.
+ */
 app.get('/api/recepcion-data', async (req, res) => {
   try {
     const familiaId = req.query.familia_id ? Number(req.query.familia_id) : null;
@@ -174,6 +180,10 @@ app.get('/api/recepcion-data', async (req, res) => {
 
     if (errAlm) throw errAlm;
 
+    // Items:
+    // Regla crítica: si no se selecciona familia/subfamilia => TODOS los items (según inventario/item)
+    // En este schema, inventario es por (id_almacen, id_item), así que si no elegimos almacén
+    // deduplicamos por id_item, pero guardamos id_almacen opcional en UI (la UI deberá mandarlo).
     let itemsQuery = supabase
       .from('inventario')
       .select(`
@@ -203,6 +213,11 @@ app.get('/api/recepcion-data', async (req, res) => {
     const { data: invRows, error: errInv } = await itemsQuery;
     if (errInv) throw errInv;
 
+    // Deduplicar por id_item (mostramos 1 option por item). Guardamos un id_almacen ejemplo para que UI
+    // pueda usarlo si decide auto-seleccionar; pero el POST real usará el id_almacen elegido.
+    // IMPORTANTE:
+    // `inventario` puede tener el mismo id_item en múltiples almacenes.
+    // Para que el dropdown no "mezcle" registros, deduplicamos por (id_item, id_almacen).
     const mapByItemAlmacen = new Map();
     (invRows || []).forEach((r) => {
       const it = r.item;
@@ -315,7 +330,7 @@ app.post('/api/ajuste-recepcion', async (req, res) => {
     // Si todo salió bien, respondemos éxito
     return res.json({ 
       success: true, 
-      message: `Recepción registrada con éxito. Guía N° ${idGuiaCreada}` 
+      message: `Recepción guardada con éxito. Guía N° ${idGuiaCreada}` 
     });
 
   } catch (error) {

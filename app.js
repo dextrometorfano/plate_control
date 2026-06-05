@@ -504,6 +504,10 @@ function renderAdd() {
       </style>
 
       <h3 class="section-title">Ajuste de Inventario</h3>
+      <p class="subtle small" style="margin-top:-4px; margin-bottom:12px;">
+        Implementación completa: <b>Recepción</b>.
+      </p>
+
       <div class="ms-switch-wrap">
         <div class="ms-switch" id="ms-switch" data-mode="recepcion" role="switch" aria-checked="false" tabindex="0">
           <div class="ms-thumb" id="ms-thumb"></div>
@@ -594,9 +598,10 @@ function renderAdd() {
     familias: [],
     subfamilias: [],
     itemsCache: [],
-    carrito: new Map()
-    };
+    carrito: new Map() // key: String(idItem) -> { id_item: Number, nombre, subfamiliaNombre, cantidad }
+  };
 
+  // --- ELEMENTOS DEL DOM ---
   const getEl = (id) => wrap.querySelector(`#${id}`);
 
   function showLoading() {

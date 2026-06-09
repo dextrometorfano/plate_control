@@ -218,12 +218,11 @@ app.get('/api/recepcion-data', async (req, res) => {
   }
 });
 
-// ==========================================
-// GET: CARGA DE COMBOS Y FILTROS (RETIRO)
-// ==========================================
 app.get('/api/retiro-data', async (req, res) => {
   try {
-    const { familia_id, subfamilia_id } = req.query;
+    // 1. Normalización de filtros de entrada
+    const familiaId = req.query.familia_id ? Number(req.query.familia_id) : null;
+    const subfamiliaId = req.query.subfamilia_id ? Number(req.query.subfamilia_id) : null;
 
     const { count: totalVales, error: errCount } = await supabase
       .from('vale_retiro')
@@ -253,38 +252,76 @@ app.get('/api/retiro-data', async (req, res) => {
     
     if (errFam) throw errFam;
 
-    const { data: subfamilias, error: errSubFam } = await supabase
-      .from('subfamilia')
-      .select('id, nombre')
-      .order('nombre', { ascending: true });
-    
+    let subQuery = supabase.from('subfamilia').select('id, id_familia, nombre');
+    if (familiaId) subQuery = subQuery.eq('id_familia', familiaId);
+
+    const { data: subfamilias, error: errSubFam } = await subQuery.order('nombre', { ascending: true });
     if (errSubFam) throw errSubFam;
 
-    let queryItems = supabase
-      .from('item')
+    let itemsQuery = supabase
+      .from('inventario')
       .select(`
         id,
-        nombre,
-        id_subfamilia,
-        subfamilia!inner(id_familia)
+        cantidad,
+        id_item,
+        id_almacen,
+        item (
+          id,
+          nombre,
+          descripcion,
+          subfamilia (
+            id,
+            id_familia,
+            nombre,
+            familia ( id, nombre )
+          )
+        )
       `);
 
-    if (subfamilia_id) {
-      queryItems = queryItems.eq('id_subfamilia', subfamilia_id);
-    } else if (familia_id) {
-      queryItems = queryItems.eq('subfamilia.id_familia', familia_id);
+    if (subfamiliaId) {
+      itemsQuery = itemsQuery.eq('item.subfamilia.id', subfamiliaId);
+    } else if (familiaId) {
+      itemsQuery = itemsQuery.eq('item.subfamilia.id_familia', familiaId);
     }
 
-    const { data: itemsRaw, error: errItems } = await queryItems.order('nombre', { ascending: true });
-    if (errItems) throw errItems;
+    const { data: invRows, error: errInv } = await itemsQuery;
+    if (errInv) throw errInv;
 
-    const items = itemsRaw.map(it => ({
-      itemId: it.id,
-      itemNombre: it.nombre,
-      subfamiliaId: it.id_subfamilia,
-      familiaId: it.subfamilia?.id_familia || null,
-      sugeridoAlmacenId: null
-    }));
+    const mapByItemAlmacen = new Map();
+    (invRows || []).forEach((r) => {
+      const it = r.item;
+      if (!it || it.id == null) return;
+
+      const idItem = it.id;
+      const sugeridoAlmacenId = r.id_almacen ?? null;
+      const key = `${idItem}|${sugeridoAlmacenId ?? ''}`;
+
+      if (!mapByItemAlmacen.has(key)) {
+        mapByItemAlmacen.set(key, {
+          itemId: idItem,
+          itemNombre: it.nombre || '',
+          descripcion: it.descripcion || null,
+          subfamiliaId: it.subfamilia?.id ?? null,
+          subfamiliaNombre: it.subfamilia?.nombre ?? '',
+          familiaId: it.subfamilia?.id_familia ?? null,
+          familiaNombre: it.subfamilia?.familia?.nombre ?? '',
+          cantidad: r.cantidad ?? 0,
+          sugeridoAlmacenId
+        });
+      }
+    });
+
+    const items = Array.from(mapByItemAlmacen.values()).sort((a, b) => {
+      const af = `${a.familiaNombre}`.toLowerCase();
+      const bf = `${b.familiaNombre}`.toLowerCase();
+      if (af !== bf) return af.localeCompare(bf);
+      
+      const as = `${a.subfamiliaNombre}`.toLowerCase();
+      const bs = `${b.subfamiliaNombre}`.toLowerCase();
+      if (as !== bs) return as.localeCompare(bs);
+      
+      return `${a.itemNombre}`.toLowerCase().localeCompare(`${b.itemNombre}`.toLowerCase());
+    });
 
     return res.status(200).json({
       success: true,

@@ -251,11 +251,8 @@
     footer.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:center; gap:14px; padding:16px;">
         <div style="display:flex; align-items:center; gap:12px;">
-          <div style="background:#fff; padding:6px; border-radius:12px; border:1px solid var(--border); box-shadow: var(--shadow-sm);">
-            <img alt="Invex" src="${safeAsset("src/assets/invex-logo.png")}" style="width:24px; height:24px; object-fit:contain;" onerror="this.style.display='none'"/>
-          </div>
           <div>
-            <div style="color:#fff; font-weight:900; font-size:16px;">FAMECA</div>
+            <div style="color:#fff; font-weight:900; font-size:16px;">v. alpha</div>
           </div>
         </div>
       </div>
@@ -476,7 +473,6 @@ function renderAdd() {
     <div id="loading-overlay">Cargando...</div>
   `;
 
-  // --- ÁMBITO DE ESTADO PRIVADO ---
   const state = {
     modoActual: 'recepcion', 
     proximoId: 1,
@@ -937,98 +933,71 @@ window.__invexAddDemo = function () {
   }
 
   function renderReports() {
-    const wrap = document.createElement("div");
-    wrap.className = "space-y-12";
+      const wrap = document.createElement("div");
+      wrap.className = "space-y-12";
 
-    // Modificado: Ya no usamos 'grid-2', dejamos que la tarjeta fluya a lo ancho
-    const card2 = `
-      <div class="card" style="padding:16px;">
-        <h3 class="section-title">Actividades</h3>
-        <div class="subtle small" style="margin-top:-6px;">
-          Últimos movimientos de almacén en tiempo real.
+      const card2 = `
+        <div class="card" style="padding:16px;">
+          <h3 class="section-title">Actividades</h3>
+          <div class="subtle small" style="margin-top:-6px;">
+            Últimos movimientos de almacén en tiempo real.
+          </div>
+          <div id="reportsActivity" class="list" style="margin-top:12px; display:grid; gap:10px;"></div>
         </div>
-        <div id="reportsActivity" class="list" style="margin-top:12px; display:grid; gap:8px;"></div>
-      </div>
-    `;
+      `;
 
-    wrap.innerHTML = card2;
+      wrap.innerHTML = card2;
 
-    const list = wrap.querySelector("#reportsActivity");
-    
-    // Tomamos los movimientos reales que el backend inyectó en 'activity'
-    const items = state.activity || [];
+      const list = wrap.querySelector("#reportsActivity");
+      const items = state.activity || [];
 
-    list.innerHTML = items.length
-      ? items.slice(0, 4).map((a) => {
-          // Identificamos si es RECEPCION o RETIRO leyendo el detalle que armó el backend
-          const esRecepcion = a.detalle.includes("RECEPCION");
-          const badgeClass = esRecepcion ? "ok" : "danger";
+      list.innerHTML = items.length
+        ? items.slice(0, 4).map((a) => {
+            // 1. Extraemos los datos que empaquetó el backend en el "detalle"
+            // Ejemplo de detalle: "RECEPCION de +5 un. en Principal" o "RETIRO de -2 un. en Principal"
+            const esRecepcion = a.detalle.includes("RECEPCION");
+            
+            // 2. Buscamos el número (+5, -2, etc.) usando una expresión regular sencilla
+            const matchCantidad = a.detalle.match(/[+-]\d+/);
+            const cantidadTexto = matchCantidad ? matchCantidad[0] : "0";
 
-          return `
-            <div class="item" style="padding:12px; background:var(--card-2); border-radius:var(--radius); border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-              <div class="item-meta" style="flex:1; padding-right:12px;">
-                <div class="item-name" style="font-weight:600; font-size:14px; color:var(--text);">${escapeHtml(a.titulo)}</div>
-                <div class="item-sub" style="font-size:12px; color:rgba(17,24,39,.6); margin-top:2px;">
-                  ${escapeHtml(a.detalle)}
+            // 3. Extraemos el nombre del almacén que viene al final del detalle
+            const partesDetalle = a.detalle.split(" en ");
+            const almacenTexto = partesDetalle.length > 1 ? partesDetalle[1] : "";
+
+            // 4. Definimos los estilos visuales según el tipo de movimiento
+            // Usamos box-shadow inset de 4px para simular el borde grueso hacia adentro
+            const estiloBordeInward = esRecepcion 
+              ? "box-shadow: inset 5px 0px 0px 0px #10b981; border: 1px solid var(--border);" // Verde (ok)
+              : "box-shadow: inset 5px 0px 0px 0px #ef4444; border: 1px solid var(--border);"; // Rojo (danger)
+              
+            const badgeClass = esRecepcion ? "ok" : "danger";
+            const tipoTexto = esRecepcion ? "RECEPCION" : "RETIRO";
+
+            return `
+              <div class="item" style="padding:12px 12px 12px 20px; background:var(--card-2); border-radius:var(--radius); ${estiloBordeInward} display:flex; justify-content:space-between; align-items:center;">
+                <div class="item-meta" style="flex:1; padding-right:12px;">
+                  <div class="item-name" style="font-weight:850; font-size:15px; letter-spacing:0.5px; color:var(--text);">
+                    ${tipoTexto}
+                  </div>
+                  <div class="item-sub" style="font-size:12px; color:rgba(17,24,39,.6); margin-top:4px; font-weight:500;">
+                    ${escapeHtml(a.titulo)} <span style="color:rgba(17,24,39,.4);">•</span> ${escapeHtml(almacenTexto)} <span style="color:rgba(17,24,39,.4);">•</span> ${escapeHtml(a.tiempo)}
+                  </div>
+                </div>
+                
+                <div style="text-align:right; flex-shrink:0;">
+                  <span class="badge ${badgeClass}" style="font-weight:900; font-size:14px; padding:6px 12px; border-radius:6px;">
+                    ${cantidadTexto}
+                  </span>
                 </div>
               </div>
-              
-              <div style="text-align:right; flex-shrink:0;">
-                <span class="badge ${badgeClass}" style="font-weight:700; font-size:11px; text-transform:uppercase;">
-                  ${escapeHtml(a.tiempo)}
-                </span>
-              </div>
-            </div>
-          `;
-        }).join("")
-      : `<div class="subtle small">Sin reportes de movimientos.</div>`;
+            `;
+          }).join("")
+        : `<div class="subtle small">Sin reportes de movimientos.</div>`;
 
-    return wrap;
+      return wrap;
   }
-  function renderProfile() {
-    const wrap = document.createElement("div");
-    wrap.className = "space-y-12";
-
-    const user = state.user || { nombre: "Usuario", email: "—" };
-
-    wrap.innerHTML = `
-      <div class="card" style="padding:16px;">
-        <h3 class="section-title">Perfil</h3>
-
-        <div class="row" style="margin-top:12px;">
-          <div class="item-thumb" style="width:56px; height:56px; border-radius:18px;">
-            ${userIcon()}
-          </div>
-
-          <div class="item-meta">
-            <div class="item-name" style="font-size:16px;">${escapeHtml(user.nombre)}</div>
-            <div class="item-sub">${escapeHtml(user.email)}</div>
-          </div>
-        </div>
-
-        <div style="margin-top:14px; display:grid; gap:10px;">
-          <div class="row" style="justify-content:space-between;">
-            <span class="subtle small" style="font-weight:850; color:rgba(17,24,39,.72);">Organización</span>
-            <span class="badge">${escapeHtml(state.companyName || "—")}</span>
-          </div>
-
-          <div class="row" style="justify-content:space-between;">
-            <span class="subtle small" style="font-weight:850; color:rgba(17,24,39,.72);">Modo</span>
-            <span class="badge ok">Inventario</span>
-          </div>
-        </div>
-
-        <div class="row" style="margin-top:16px; justify-content:flex-end;">
-          <button class="btn btn-ghost" type="button" onclick="window.__invexSetScreen && window.__invexSetScreen('dashboard')">
-            Volver al inicio
-          </button>
-        </div>
-      </div>
-    `;
-
-    return wrap;
-  }
-
+  
   // Helpers
   function number(n) {
     const num = Number(n);

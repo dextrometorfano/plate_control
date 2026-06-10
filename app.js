@@ -472,7 +472,7 @@ function renderAdd() {
 
     <div id="loading-overlay">Cargando...</div>
   `;
-
+  
   const state = {
     modoActual: 'recepcion', 
     proximoId: 1,
@@ -997,7 +997,51 @@ window.__invexAddDemo = function () {
 
       return wrap;
   }
-  
+
+  function renderProfile() {
+    const wrap = document.createElement("div");
+    wrap.className = "space-y-12";
+
+    const user = state.user || { nombre: "Usuario", email: "—" };
+
+    wrap.innerHTML = `
+      <div class="card" style="padding:16px;">
+        <h3 class="section-title">Perfil</h3>
+
+        <div class="row" style="margin-top:12px;">
+          <div class="item-thumb" style="width:56px; height:56px; border-radius:18px;">
+            ${userIcon()}
+          </div>
+
+          <div class="item-meta">
+            <div class="item-name" style="font-size:16px;">${escapeHtml(user.nombre)}</div>
+            <div class="item-sub">${escapeHtml(user.email)}</div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; display:grid; gap:10px;">
+          <div class="row" style="justify-content:space-between;">
+            <span class="subtle small" style="font-weight:850; color:rgba(17,24,39,.72);">Organización</span>
+            <span class="badge">${escapeHtml(state.companyName || "—")}</span>
+          </div>
+
+          <div class="row" style="justify-content:space-between;">
+            <span class="subtle small" style="font-weight:850; color:rgba(17,24,39,.72);">Modo</span>
+            <span class="badge ok">Inventario</span>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:16px; justify-content:flex-end;">
+          <button class="btn btn-ghost" type="button" onclick="window.__invexSetScreen && window.__invexSetScreen('dashboard')">
+            Volver al inicio
+          </button>
+        </div>
+      </div>
+    `;
+
+    return wrap;
+  }
+
   // Helpers
   function number(n) {
     const num = Number(n);

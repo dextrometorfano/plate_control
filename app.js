@@ -952,7 +952,7 @@ window.__invexAddDemo = function () {
       const items = state.activity || [];
 
       list.innerHTML = items.length
-        ? items.slice(0, 4).map((a) => {
+        ? items.slice(0, 10).map((a) => {
             // 1. Extraemos los datos que empaquetó el backend en el "detalle"
             // Ejemplo de detalle: "RECEPCION de +5 un. en Principal" o "RETIRO de -2 un. en Principal"
             const esRecepcion = a.detalle.includes("RECEPCION");

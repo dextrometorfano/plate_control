@@ -940,65 +940,51 @@ window.__invexAddDemo = function () {
     const wrap = document.createElement("div");
     wrap.className = "space-y-12";
 
-    const reports = document.createElement("div");
-    reports.className = "grid-2";
-
-    const card1 = `
-      <div class="card" style="padding:16px;">
-        <h3 class="section-title">Resumen de stock</h3>
-        <div class="subtle small" style="margin-top:-6px;">
-          Demo: distribución por estado.
-        </div>
-
-        <div style="margin-top:12px; display:grid; gap:10px;">
-          <div class="row" style="justify-content:space-between;">
-            <span class="small" style="font-weight:850; color:rgba(17,24,39,.72);">OK</span>
-            <span class="badge ok">Actual</span>
-          </div>
-
-          <div class="row" style="justify-content:space-between;">
-            <span class="small" style="font-weight:850; color:rgba(17,24,39,.72);">Bajo</span>
-            <span class="badge warn">Atención</span>
-          </div>
-
-          <div class="row" style="justify-content:space-between;">
-            <span class="small" style="font-weight:850; color:rgba(17,24,39,.72);">Crítico</span>
-            <span class="badge danger">Acción</span>
-          </div>
-        </div>
-      </div>
-    `;
-
+    // Modificado: Ya no usamos 'grid-2', dejamos que la tarjeta fluya a lo ancho
     const card2 = `
       <div class="card" style="padding:16px;">
         <h3 class="section-title">Actividades</h3>
         <div class="subtle small" style="margin-top:-6px;">
-          Últimos cambios y conteos.
+          Últimos movimientos de almacén en tiempo real.
         </div>
-        <div id="reportsActivity" class="list" style="margin-top:12px;"></div>
+        <div id="reportsActivity" class="list" style="margin-top:12px; display:grid; gap:8px;"></div>
       </div>
     `;
 
-    reports.innerHTML = card1 + card2;
-    wrap.appendChild(reports);
+    wrap.innerHTML = card2;
 
     const list = wrap.querySelector("#reportsActivity");
+    
+    // Tomamos los movimientos reales que el backend inyectó en 'activity'
     const items = state.activity || [];
 
     list.innerHTML = items.length
-      ? items.slice(0, 4).map((a) => `
-          <div class="item" style="padding:12px; background:var(--card-2); border-radius:var(--radius); border:1px solid var(--border);">
-            <div class="item-meta">
-              <div class="item-name">${escapeHtml(a.titulo)}</div>
-              <div class="item-sub">${escapeHtml(a.detalle)} • ${escapeHtml(a.tiempo)}</div>
+      ? items.slice(0, 4).map((a) => {
+          // Identificamos si es RECEPCION o RETIRO leyendo el detalle que armó el backend
+          const esRecepcion = a.detalle.includes("RECEPCION");
+          const badgeClass = esRecepcion ? "ok" : "danger";
+
+          return `
+            <div class="item" style="padding:12px; background:var(--card-2); border-radius:var(--radius); border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+              <div class="item-meta" style="flex:1; padding-right:12px;">
+                <div class="item-name" style="font-weight:600; font-size:14px; color:var(--text);">${escapeHtml(a.titulo)}</div>
+                <div class="item-sub" style="font-size:12px; color:rgba(17,24,39,.6); margin-top:2px;">
+                  ${escapeHtml(a.detalle)}
+                </div>
+              </div>
+              
+              <div style="text-align:right; flex-shrink:0;">
+                <span class="badge ${badgeClass}" style="font-weight:700; font-size:11px; text-transform:uppercase;">
+                  ${escapeHtml(a.tiempo)}
+                </span>
+              </div>
             </div>
-          </div>
-        `).join("")
-      : `<div class="subtle small">Sin reportes.</div>`;
+          `;
+        }).join("")
+      : `<div class="subtle small">Sin reportes de movimientos.</div>`;
 
     return wrap;
   }
-
   function renderProfile() {
     const wrap = document.createElement("div");
     wrap.className = "space-y-12";

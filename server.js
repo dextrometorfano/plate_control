@@ -84,15 +84,31 @@ app.get('/api/state', async (req, res) => {
     const totalArticulos = articles.length;
     const escaneados = articles.filter(a => a.stock > 0).length;
     const restantes = totalArticulos - escaneados;
+    const { data: movData, error: movError } = await supabase
+      .from('report') 
+      .select('fecha, tipo_movimiento, item, cantidad, almacen')
+      .limit(10);
+
+    if (movError) {
+      console.error("⚠️ Error al traer movimientos:", movError);
+    }
+
+    const activityFeed = (movData || []).map((m, index) => {
+      const signo = m.tipo_movimiento === 'RECEPCION' ? '+' : '';
+      return {
+        id: `M-${index}`,
+        titulo: m.item,
+        detalle: `${m.tipo_movimiento} de ${signo}${m.cantidad} unidades en ${m.almacen}`,
+        tiempo: m.fecha
+      };
+    });
 
     res.json({
       companyName: "FAMECA",
       user: { nombre: "random", email: "random@fameca.pe" },
       stats: { totalArticulos, escaneados, restantes },
       articles: articles,
-      activity: [
-        { id: "H-1", titulo: "Base de datos sincronizada", detalle: "Conexión exitosa con Supabase", tiempo: "Ahora" }
-      ]
+      activity: activityFeed
     });
 
   } catch (error) {

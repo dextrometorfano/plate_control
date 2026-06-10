@@ -382,7 +382,8 @@ function renderAdd() {
         .qty-input{ width:92px; border:1px solid var(--border); border-radius:14px; padding:9px 10px; font-size:14px; background:#fff; outline:none; }
         .qty-input:focus{ border-color: rgba(14,165,233,.55); box-shadow: 0 0 0 3px rgba(14,165,233,.15); }
 
-        .remove-btn{ border:0; background:transparent; color: rgba(17,24,39,.45); cursor:pointer; font-weight:900; font-size:14px; padding:0 4px; }
+        .remove-btn {border: 0;background: transparent;color: #ef4444;cursor: pointer;font-weight: 900;font-size: 18px;padding: 4px 8px;transition: color 0.2s ease;}
+        .remove-btn:hover {color: #dc2626;}
         .add-btn{
           border:0; background: rgba(14,165,233,.14); color: #0284c7; padding:10px 12px;
           border-radius:14px; font-weight:900; cursor:pointer; border:1px solid rgba(14,165,233,.22); height:44px;
@@ -531,10 +532,16 @@ function renderAdd() {
     opt0.value = ''; opt0.textContent = '-- Seleccione un item --';
     $selItem.appendChild(opt0);
 
+    const itemsAgregados = new Set();
+
     (items || []).forEach((it) => {
+      const idItem = it.itemId;
+      if (itemsAgregados.has(idItem)) {
+        return; 
+      }
+      itemsAgregados.add(idItem);
       const opt = document.createElement('option');
       const almId = it.sugeridoAlmacenId ?? null;
-      const idItem = it.itemId;
       opt.value = `${idItem}|${almId ?? ''}`;
 
       const disp = `${it.subfamiliaNombre || ''} ${it.itemNombre || ''}`.trim();
@@ -649,7 +656,7 @@ function renderAdd() {
     state.carrito.set(idItemCompuesta, { 
       id_item: Number(idItemSolo), 
       nombre: nombre, 
-      subfamiliaNombre: sub, 
+      familiaNombre: fam, 
       cantidad: 1 
     });
 

@@ -670,7 +670,7 @@ function renderAdd() {
     itemDiv.innerHTML = `
       <div class="item-info">
         <div class="item-nombre">${escapeHtml(nombre)}</div>
-        <div class="item-sub">${escapeHtml(sub || fam)}</div>
+        <div class="item-familia" style="font-size: 0.9em; color: #666;">${escapeHtml(fam)}</div>
       </div>
       <div class="item-controls">
         <input type="number" class="qty-input" value="1" min="1" step="1" />
